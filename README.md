@@ -1,16 +1,12 @@
-# API reversing tool
+<img src="http://icons.iconarchive.com/icons/aha-soft/jewelry/128/Sapphire-icon.png" align="right"/>
 
-## <u>Name</u>
+# S A P h I R E
 
-S A P h I R E (with an image)
-
-**S**imple **API** **R**everse **E**ngineering
+_**S**imple **API** **R**everse **E**ngineering **h**elper_
 
 
 
-## <u>Description</u>
-
- Tool to assist reverse engineering of arbitrary API flows like Authentication protocols. Note that we only care about the tokens like ... Predictable Metadata like the `User-Agent` / `Content-type` headers or `?encoding=utf-8` params are ignored and the user can then manually add them to his requests
+...is a tool to assist reverse engineering of arbitrary API flows like Authentication protocols. Isolate "tokens" like Cookies / Headers / URL parameters / Form fields and highlight them to make the underlying logic obvious. Note that we only care about non-standard tokens like uncommon Headers (e.g. not `Accept` / `Content-type` ) headers or `?encoding=utf-8` params.
 
 
 
