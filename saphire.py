@@ -175,22 +175,24 @@ def fit_print(line, offset, threshold, first_last=False):
     """
 
     # TODO end any colors hung
-    #offset =+ 2                                                     # box border
+    #offset =+ 2                                                   
 
     if offset:                                                      # move
-        line = ' '*offset + line
+        line = ' '*(offset+1) + line
 
-    if len(line) >= threshold-3:                                    # clip 
+    if len(line) >= threshold-5:                                    # clip 
         if not first_last:
-            line = line[0:threshold-3]
+            line = line[0:threshold-5]
             line += '...'
         else:
             line = line[0:threshold]
 
-    if first_last:
+    if first_last:                                                  # box border 
         print " %-*s " % (threshold,line)
     else:
-        print "|%-*s |" % (threshold,line)
+        line = line[:offset]+'| '+line[offset:]
+#        line = ['|' if i==offset else line[i] for i in range(len(line)) ]
+        print "%-*s |" % (threshold,''.join(line))
 
 
 
@@ -201,6 +203,7 @@ def fit_print(line, offset, threshold, first_last=False):
 
 def flow_print():
     # TODO replace tokens.append(t) calls above with a t.search_and_insert_to(tokens)
+    # to make use of a common method 
     # where they are colored similarly if found again
 
     rows, columns = os.popen('stty size', 'r').read().split()
@@ -226,13 +229,14 @@ def flow_print():
         
         any_tokens = False
         for t in tokens:
-            if t.time == e['time']:                                 # filter tokens by request (via its time)
+            if t.time == e['time']:                                 # filter tokens by request-time (kepp only the ones of current req_resp)
                 any_tokens = True
                 req_tokens_by_type[ t.type ].append(t.tuple)                
 
         if not any_tokens:
             continue
         
+        ##### Request
         fit_print('_'*500, 0, req_thres, True)
         line =    "%10s|%s" % ('#'+str(i), e['startedDateTime'][11:22]) 
         fit_print(line, 0, req_thres)                               # TODO trim according to len and end any colors hung (line, offset, threshold)
@@ -243,7 +247,7 @@ def flow_print():
         fit_print('-'*10 + '+' + '-'*500, 0, req_thres)
         for t_type in ['url', 'cookie', 'req_header', 'form']:
             l = len(req_tokens_by_type[t_type])
-            if( l ):
+            if l:
                 line = "%10s|" % t_type
                 for j in range(l):
                     rtc = req_tokens_by_type[t_type][j]
@@ -251,6 +255,25 @@ def flow_print():
                 fit_print(line, 0, req_thres)
 
         fit_print('_'*500, 0, req_thres, True)
+        
+        
+        
+        ##### Response
+        fit_print('_'*500, resp_offset, columns-2, True)
+        line = "%4d %s" % (e['response']['status'], e['response']['statusText'])
+        fit_print(line,resp_offset, columns-2)
+        fit_print('-'*500, resp_offset, columns-2)
+
+        for t_type in ['resp_header','resp','html']:
+            l = len(req_tokens_by_type[t_type])
+            if l:
+                line = "%10s|" % t_type
+                for j in range(l):
+                    rtc = req_tokens_by_type[t_type][j]
+                    line += "%s=%s%s" % (rtc[0],rtc[1],' ' if j<l-1 else '')
+                fit_print(line,resp_offset,columns-2)
+
+        fit_print('_'*500, resp_offset, columns-2,True)
         print '\n'
 
 
