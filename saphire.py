@@ -5,6 +5,8 @@ import json
 import termcolor
 import os
 import urlparse
+#TODO that pip install -r requirements.txt trick
+
 
 def isolate_requests(har_file):
     global req_resp, debug
@@ -174,16 +176,13 @@ def fit_print(line, offset, threshold, first_last=False):
     When first_last in kwargs, print no ending box-border |
     """
 
-    # TODO end any colors hung
-    #offset =+ 2                                                   
-
     if offset:                                                      # move
         line = ' '*(offset+1) + line
 
     if len(line) >= threshold-5:                                    # clip 
         if not first_last:
             line = line[0:threshold-5]
-            line += '...'
+            line += termcolor.RESET+'...'
         else:
             line = line[0:threshold]
 
@@ -231,7 +230,7 @@ def flow_print():
         for t in tokens:
             if t.time == e['time']:                                 # filter tokens by request-time (kepp only the ones of current req_resp)
                 any_tokens = True
-                req_tokens_by_type[ t.type ].append(t.tuple)                
+                req_tokens_by_type[ t.type ].append(t)                
 
         if not any_tokens:
             continue
@@ -239,7 +238,7 @@ def flow_print():
         ##### Request
         fit_print('_'*500, 0, req_thres, True)
         line =    "%10s|%s" % ('#'+str(i), e['startedDateTime'][11:22]) 
-        fit_print(line, 0, req_thres)                               # TODO trim according to len and end any colors hung (line, offset, threshold)
+        fit_print(line, 0, req_thres)                               
         u = urlparse.urlparse(e['request']['url'])
         line =    "%10s|%s %s" % (e['request']['method'], u.netloc, u.path)
         fit_print(line, 0, req_thres)
@@ -251,7 +250,11 @@ def flow_print():
                 line = "%10s|" % t_type
                 for j in range(l):
                     rtc = req_tokens_by_type[t_type][j]
-                    line += "%s=%s%s" % (rtc[0],rtc[1],' ' if j<l-1 else '')
+                    colord_token = termcolor.colored( 
+                                        "%s=%s" % ( rtc.tuple[0],rtc.tuple[1] ),
+                                        rtc.fcolor, rtc.bcolor
+                                   )
+                    line += "%s%s" % (colord_token,' ' if j<l-1 else '')
                 fit_print(line, 0, req_thres)
 
         fit_print('_'*500, 0, req_thres, True)
@@ -270,7 +273,11 @@ def flow_print():
                 line = "%10s|" % t_type
                 for j in range(l):
                     rtc = req_tokens_by_type[t_type][j]
-                    line += "%s=%s%s" % (rtc[0],rtc[1],' ' if j<l-1 else '')
+                    colord_token = termcolor.colored(
+                                        "%s=%s" % ( rtc.tuple[0],rtc.tuple[1] ),
+                                        rtc.fcolor, rtc.bcolor
+                                    )
+                    line += "%s%s" % (colord_token,' ' if j<l-1 else '')
                 fit_print(line,resp_offset,columns-2)
 
         fit_print('_'*500, resp_offset, columns-2,True)
