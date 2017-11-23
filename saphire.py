@@ -4,6 +4,7 @@ import sys
 import json
 import termcolor
 import os
+import string
 import urlparse
 #TODO that pip install -r requirements.txt trick
 
@@ -164,10 +165,44 @@ def recognize_tokens():
 
 
 
+COLOR_PREFIXES = [ "\033[%dm" % n     for n in range(30,48) ]
+def is_colored(text):
+    for pre in COLOR_PREFIXES:
+        if pre in text:
+            return True
+    return False
 
 
+def make_printable(text):
+    """strip non-printable chars, but keep the color ones"""
+    ret = ''
+    i = 0
+    while i < len(text):
+        if text[i] not in string.printable:
+            try:
+                # #sys.stderr.write(repr(text[i:i+5]))
+                if text[i:i+5] in COLOR_PREFIXES:
+                    ret += text[i:i+5]
+                    i += 4
+                    # #sys.stderr.write('saw colopre, skipped\n')
+                elif text[i:i+4] in termcolor.RESET:
+                    ret += text[i:i+4]
+                    i += 3
+                    # #sys.stderr.write('saw coloend, skipped\n')
+                else:
+                    ret += ''
+                    i += 2
+                    # #sys.stderr.write('it actually came here!')
+            except IndexError:
+                ret += ''
+                # #sys.stderr.write('saw nonprintable, non color erased\n')
+                return ret
 
+        else:
+            ret += text[i]
+        i += 1
 
+    return ret
 
 
 def fit_print(line, offset, threshold, first_last=False):
@@ -176,25 +211,74 @@ def fit_print(line, offset, threshold, first_last=False):
     When first_last in kwargs, print no ending box-border |
     """
 
-    if offset:                                                      # move
-        line = ' '*(offset+1) + line
 
-    if len(line) >= threshold-5:                                    # clip 
-        if not first_last:
-            line = line[0:threshold-5]
-            line += termcolor.RESET+'...'
-        else:
-            line = line[0:threshold]
+    if offset:                                                      # 1. move
+        line = ' '*(offset) + line
 
-    if first_last:                                                  # box border 
-        print " %-*s " % (threshold,line)
+    threshold_w_nonp = 0                                            # threshold different if colored!
+    printable = 0
+    if is_colored(line):
+        i = 0
+        while i < len(line):
+            if line[i:i+5] in COLOR_PREFIXES:
+                threshold_w_nonp += 5
+                i += 4
+            elif line[i:i + 4] in termcolor.RESET:
+                threshold_w_nonp += 4
+                i += 3
+            else:
+                threshold_w_nonp += 1
+                printable += 1
+            i += 1
+            if printable==threshold:
+                break
+        threshold_w_nonp = max(threshold_w_nonp,threshold)
+
     else:
-        line = line[:offset]+'| '+line[offset:]
-#        line = ['|' if i==offset else line[i] for i in range(len(line)) ]
-        print "%-*s |" % (threshold,''.join(line))
+        threshold_w_nonp = threshold
 
 
 
+    print_line = ''
+    if first_last:                                                   
+        #sys.stderr.write('len '+str(len(line)))
+        print_line += ' '
+        for i in range(threshold_w_nonp):
+            if i<len(line)-1:
+                print_line += line[i]
+            else:
+                print_line += ' '                               # pad
+                if i==threshold_w_nonp-1:                           
+                    print_line += ' |'                          # clip
+                    #sys.stderr.write(' broke on '+str(i))
+                    break
+        print make_printable(print_line)
+        #sys.stderr.write('\n')
+
+
+    else:
+        line = line[:offset]+'| '+line[offset:]                     # box border
+        #sys.stderr.write('len '+str(len(line)))
+        for i in range(threshold_w_nonp):
+            if i<len(line):
+                print_line += line[i]
+
+                if i==threshold_w_nonp-4 and not is_colored(line):  # clip
+                    print_line += '... |'
+                    break
+
+                if i==threshold_w_nonp-4 and     is_colored(line):    # clip
+                    print_line += termcolor.RESET
+                    print_line += '... |'
+                    break
+            else:
+                print_line += ' '                               # pad
+                if i==threshold_w_nonp-1:
+                    print_line += ' |'
+                    #sys.stderr.write(' broke on '+str(i))
+                    break
+        print make_printable(print_line)
+        #sys.stderr.write('\n')
 
 
 
@@ -205,8 +289,9 @@ def flow_print():
     # to make use of a common method 
     # where they are colored similarly if found again
 
-    rows, columns = os.popen('stty size', 'r').read().split()
-    columns = int(columns)
+    #rows, columns = os.popen('stty size', 'r').read().split()
+    #columns = int(columns)
+    columns = 150
     divider = 50
     if debug:
         ans = raw_input('Enter req/resp divider pct. (ENTER -> default=50%): ')
@@ -250,12 +335,14 @@ def flow_print():
                 line = "%10s|" % t_type
                 for j in range(l):
                     rtc = req_tokens_by_type[t_type][j]
-                    colord_token = termcolor.colored( 
-                                        "%s=%s" % ( rtc.tuple[0],rtc.tuple[1] ),
-                                        rtc.fcolor, rtc.bcolor
-                                   )
+                    
+                    colord_token = "%s=%s" % ( rtc.tuple[0],rtc.tuple[1] )
+                    if color_opt!=COLOR_OPTS[0]:
+                        colord_token = termcolor.colored( colord_token, rtc.fcolor)
+
                     line += "%s%s" % (colord_token,' ' if j<l-1 else '')
                 fit_print(line, 0, req_thres)
+        #        sys.exit(0)
 
         fit_print('_'*500, 0, req_thres, True)
         
@@ -273,10 +360,11 @@ def flow_print():
                 line = "%10s|" % t_type
                 for j in range(l):
                     rtc = req_tokens_by_type[t_type][j]
-                    colord_token = termcolor.colored(
-                                        "%s=%s" % ( rtc.tuple[0],rtc.tuple[1] ),
-                                        rtc.fcolor, rtc.bcolor
-                                    )
+
+                    colord_token = "%s=%s" % ( rtc.tuple[0],rtc.tuple[1] )
+                    if color_opt!=COLOR_OPTS[0]:
+                        colord_token = termcolor.colored( colord_token, rtc.fcolor )
+
                     line += "%s%s" % (colord_token,' ' if j<l-1 else '')
                 fit_print(line,resp_offset,columns-2)
 
@@ -298,10 +386,13 @@ def flow_print():
 common_headers = []
 reqs_resp = []
 tokens = []
-debug = True
+debug = True                                                        # TODO make cmdline opt
+
+COLOR_OPTS=['off','by-type','try-match']
+color_opt = COLOR_OPTS[1]                                           # TODO make cmdline opt
 
 class Token:
-    fg_colors = ['grey', 'red', 'green', 'yellow', 
+    fg_colors = [ 'red', 'green', 'yellow', 
                  'blue', 'magenta', 'cyan', 'white']
     bg_colors = [ 'on_'+fc for fc in fg_colors ]
     types = ['url', 'cookie', 'req_header', 'resp_header', 'form', 'resp', 'html'] 
@@ -345,7 +436,7 @@ if __name__ == "__main__":
     recognize_tokens()
     
 
-    graph = False
+    graph = False                                                   # TODO make cmdline opt
     if graph:
 #       flow_graph() TODO gui
         pass
