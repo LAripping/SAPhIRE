@@ -99,13 +99,13 @@ def recognize_tokens():
         ###### url params
         for p in e['request']['queryString']:
             t = Token('url', e['time'], (p['name'],p['value'])  )
-            tokens.append(t)
+            t.match_and_insert(tokens)
             recognized += 1
 
         ###### cookies
         for c in e['request']['cookies']:
             t = Token('cookie', e['time'], (c['name'],c['value']) )
-            tokens.append(t)
+            t.match_and_insert(tokens)
             recognized += 1
 
         ###### form fields
@@ -114,7 +114,7 @@ def recognize_tokens():
                                                                     # TODO what about application/form-multipart
                 for f in e['request']['postData']['params']:
                     t = Token('form', e['time'], (f['name'],f['value']) )
-                    tokens.append(t)
+                    t.match_and_insert(tokens)
                     recognized += 1
 
         ###### headers
@@ -124,7 +124,7 @@ def recognize_tokens():
             if h['name'] in common_headers:
                 continue
             t = Token('req_header', e['time'], (h['name'],h['value']) )
-            tokens.append(t)
+            t.match_and_insert(tokens)
             recognized += 1
 
         for h in e['response']['headers']:
@@ -133,7 +133,7 @@ def recognize_tokens():
             if h['name'] in common_headers:
                 continue
             t = Token('resp_header', e['time'], (h['name'],h['value']) )
-            tokens.append(t)
+            t.match_and_insert(tokens)
             recognized += 1
 
         ###### resp body
@@ -145,7 +145,7 @@ def recognize_tokens():
             all_strings = list(set(all_lists))                      # unique-ify 
             for s in all_strings:
                 t = Token('resp', e['time'], ('',s))
-                tokens.append(t)
+                t.match_and_insert(tokens)
                 recognized += 1
 
         ###### html element
@@ -180,22 +180,17 @@ def make_printable(text):
     while i < len(text):
         if text[i] not in string.printable:
             try:
-                # #sys.stderr.write(repr(text[i:i+5]))
                 if text[i:i+5] in COLOR_PREFIXES:
                     ret += text[i:i+5]
                     i += 4
-                    # #sys.stderr.write('saw colopre, skipped\n')
                 elif text[i:i+4] in termcolor.RESET:
                     ret += text[i:i+4]
                     i += 3
-                    # #sys.stderr.write('saw coloend, skipped\n')
                 else:
                     ret += ''
                     i += 2
-                    # #sys.stderr.write('it actually came here!')
             except IndexError:
                 ret += ''
-                # #sys.stderr.write('saw nonprintable, non color erased\n')
                 return ret
 
         else:
@@ -205,17 +200,17 @@ def make_printable(text):
     return ret
 
 
+
+
 def fit_print(line, offset, threshold, first_last=False):
     """
     threshold is absolute
     When first_last in kwargs, print no ending box-border |
     """
+    if offset:                                                      # 1. Move
+        line = ' '*offset + line
 
-
-    if offset:                                                      # 1. move
-        line = ' '*(offset) + line
-
-    threshold_w_nonp = 0                                            # threshold different if colored!
+    threshold_w_nonp = 0                                            # calculate correct threhold (different if colored!)
     printable = 0
     if is_colored(line):
         i = 0
@@ -241,60 +236,49 @@ def fit_print(line, offset, threshold, first_last=False):
 
     print_line = ''
     if first_last:                                                   
-        #sys.stderr.write('len '+str(len(line)))
         print_line += ' '
         for i in range(threshold_w_nonp):
             if i<len(line)-1:
                 print_line += line[i]
             else:
-                print_line += ' '                               # pad
+                print_line += ' '                                   # 2. Pad
                 if i==threshold_w_nonp-1:                           
-                    print_line += ' |'                          # clip
-                    #sys.stderr.write(' broke on '+str(i))
+                    print_line += ' |'                              # 3. Clip
                     break
         print make_printable(print_line)
-        #sys.stderr.write('\n')
 
 
     else:
-        line = line[:offset]+'| '+line[offset:]                     # box border
-        #sys.stderr.write('len '+str(len(line)))
+        line = line[:offset]+'| '+line[offset:]                     # 4. Box border
         for i in range(threshold_w_nonp):
             if i<len(line):
                 print_line += line[i]
 
-                if i==threshold_w_nonp-4 and not is_colored(line):  # clip
+                if i==threshold_w_nonp-4 and not is_colored(line):  
                     print_line += '... |'
                     break
 
-                if i==threshold_w_nonp-4 and     is_colored(line):    # clip
+                if i==threshold_w_nonp-4 and     is_colored(line):  
                     print_line += termcolor.RESET
                     print_line += '... |'
                     break
             else:
-                print_line += ' '                               # pad
+                print_line += ' '                              
                 if i==threshold_w_nonp-1:
                     print_line += ' |'
-                    #sys.stderr.write(' broke on '+str(i))
                     break
         print make_printable(print_line)
-        #sys.stderr.write('\n')
 
 
 
 
 
 def flow_print():
-    # TODO replace tokens.append(t) calls above with a t.search_and_insert_to(tokens)
-    # to make use of a common method 
-    # where they are colored similarly if found again
-
-    #rows, columns = os.popen('stty size', 'r').read().split()
-    #columns = int(columns)
-    columns = 150
+                                                                    # this won't work in the debugger
+    columns = 200 if debug else os.popen('stty size', 'r').read().split()[1]
     divider = 50
     if debug:
-        ans = raw_input('Enter req/resp divider pct. (ENTER -> default=50%): ')
+        ans = raw_input('Enter req/resp divid er pct. (ENTER -> default=50%): ')
         if ans:
             divider = int(ans)
             print "Divider set to %d" % divider
@@ -389,14 +373,15 @@ tokens = []
 debug = True                                                        # TODO make cmdline opt
 
 COLOR_OPTS=['off','by-type','try-match']
-color_opt = COLOR_OPTS[1]                                           # TODO make cmdline opt
+color_opt = COLOR_OPTS[2]                                           # TODO make cmdline opt
+                                                                    # TODO make an asciinema for the README now that we have colors
 
 class Token:
     fg_colors = [ 'red', 'green', 'yellow', 
                  'blue', 'magenta', 'cyan', 'white']
     bg_colors = [ 'on_'+fc for fc in fg_colors ]
     types = ['url', 'cookie', 'req_header', 'resp_header', 'form', 'resp', 'html'] 
-    fc = 0
+    fc = 0                                                          # static =class-scoped counter for fg color idx in array
 
     def __init__(self, ttype, ttime, ttuple):
         self.tuple = ttuple
@@ -404,14 +389,16 @@ class Token:
             exit('Unsupported type \''+ttype+'\'!')
         self.type = ttype
         self.time = ttime
-        bc = Token.types.index(ttype) % len(Token.bg_colors)
-        self.bcolor = Token.bg_colors[ bc ]
         
-        if Token.fc==bc:
+        if color_opt == COLOR_OPTS[1]:                              # "by-type" : loop colors for same-typed tokens, 
+            bc = Token.types.index(ttype) % len(Token.bg_colors)
+            self.bcolor = Token.bg_colors[ bc ]
+            
+            if Token.fc==bc:
+                Token.fc = (Token.fc+1) % len(Token.fg_colors)
+            
+            self.fcolor = Token.fg_colors[Token.fc]
             Token.fc = (Token.fc+1) % len(Token.fg_colors)
-        
-        self.fcolor = Token.fg_colors[Token.fc]
-        Token.fc = (Token.fc+1) % len(Token.fg_colors)
       
 
     def dump(self):
@@ -423,6 +410,26 @@ class Token:
         print json.dumps( dictified, indent=4, sort_keys=True )
 
 
+    def match_and_insert(self, array):
+        """
+        Before adding any new token to the global array of recognized ones, search if it has 
+        pre-occured and assign the same color. If not, assign a new one from the pool of free ones. 
+        """
+
+        if color_opt == COLOR_OPTS[2]:                              # "try_match" 
+            found = False
+
+            for t in array:
+                if self.tuple[1] == t.tuple[1]:
+                    self.fcolor = t.fcolor
+                    found = True
+    
+            if not found:
+                self.fcolor = Token.fg_colors[Token.fc]
+                Token.fc = (Token.fc + 1) % len(Token.fg_colors)
+    
+        array.append(self)
+            
 
 
 ####### MAIN
