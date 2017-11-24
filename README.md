@@ -28,7 +28,7 @@ It's still a **WIP** and very pre-mature but as you can see from the demo execut
 
 First manually carry out the flow (assumed Chrome): Open Dev Tools -> `Network` -> Check `Preserve Log`, clear it and... -> ( do the flow ) -> Right click -> `Save as HAR with content`. Then:
 
-<a href="https://asciinema.org/a/7mgi3oTOy1M0SaVI0uNFnV0bw?autoplay=1" target="_blank"><img src="https://asciinema.org/a/7mgi3oTOy1M0SaVI0uNFnV0bw.png" /></a>
+<a href="https://asciinema.org/a/WNwagDpjbWv0DS8o0GIpEmEsc?autoplay=1" target="_blank"><img src="https://asciinema.org/a/ykIH6IrDNe7V1lXMdfcUv3dQh.png" /></a>
 
 
 
