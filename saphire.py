@@ -1,11 +1,15 @@
 #!/usr/bin/python
-
+import base64
 import sys
 import json
+import urllib
+import urlparse
+from matplotlib.cbook import dict_delall
+
 import termcolor
 import os
 import string
-import urlparse
+import re
 #TODO that pip install -r requirements.txt trick
 
 
@@ -165,14 +169,6 @@ def recognize_tokens():
 
 
 
-COLOR_PREFIXES = [ "\033[%dm" % n     for n in range(30,48) ]
-def is_colored(text):
-    for pre in COLOR_PREFIXES:
-        if pre in text:
-            return True
-    return False
-
-
 def make_printable(text):
     """strip non-printable chars, but keep the color ones"""
     ret = ''
@@ -245,7 +241,7 @@ def fit_print(line, offset, threshold, first_last=False):
                 if i==threshold_w_nonp-1:                           
                     print_line += ' |'                              # 3. Clip
                     break
-        print make_printable(print_line)
+        print make_printable(termcolor.RESET+print_line)
 
 
     else:
@@ -267,7 +263,7 @@ def fit_print(line, offset, threshold, first_last=False):
                 if i==threshold_w_nonp-1:
                     print_line += ' |'
                     break
-        print make_printable(print_line)
+        print make_printable(termcolor.RESET+print_line)            # 5. Catch color-leak from prev line
 
 
 
@@ -288,6 +284,13 @@ def flow_print():
     if debug:
         print "Request-info will span %d/%d chars. Responses start on %d" % (req_thres, columns, resp_offset)
 
+    max_len = 25                                                    # limit the length of tokens displayed, need to print as much as we can
+    if debug:                                                       # for a cool demonstration, not the full value of it! (do this later manually)
+        ans = raw_input('Enter maximum characters of tokens to be shown. (ENTER -> default=25)')
+        if ans:
+            max_len = int(ans)
+            print "Max len set to %d" % max_len
+
 
     for i in range(len(req_resp)):
         e = req_resp[i]                                             # "startedDateTime": "2017-10-30T20:29:41.816Z"
@@ -303,7 +306,10 @@ def flow_print():
 
         if not any_tokens:
             continue
-        
+
+
+
+
         ##### Request
         fit_print('_'*500, 0, req_thres, True)
         line =    "%10s|%s" % ('#'+str(i), e['startedDateTime'][11:22]) 
@@ -319,8 +325,10 @@ def flow_print():
                 line = "%10s|" % t_type
                 for j in range(l):
                     rtc = req_tokens_by_type[t_type][j]
-                    
-                    colord_token = "%s=%s" % ( rtc.tuple[0],rtc.tuple[1] )
+
+                    key     = rtc.tuple[0]
+                    value   = (rtc.tuple[1][:max_len]+'...') if len(rtc.tuple[1]) > max_len else rtc.tuple[1]
+                    colord_token = "%s=%s" % ( key,value )
                     if color_opt!=COLOR_OPTS[0]:
                         colord_token = termcolor.colored( colord_token, rtc.fcolor)
 
@@ -345,7 +353,9 @@ def flow_print():
                 for j in range(l):
                     rtc = req_tokens_by_type[t_type][j]
 
-                    colord_token = "%s=%s" % ( rtc.tuple[0],rtc.tuple[1] )
+                    key = rtc.tuple[0]
+                    value = (rtc.tuple[1][:max_len] + '...') if len(rtc.tuple[1]) > max_len else rtc.tuple[1]
+                    colord_token = "%s=%s" % (key, value)
                     if color_opt!=COLOR_OPTS[0]:
                         colord_token = termcolor.colored( colord_token, rtc.fcolor )
 
@@ -360,6 +370,56 @@ def flow_print():
 
 
 
+COLOR_PREFIXES = [ "\033[%dm" % n     for n in range(30,48) ]
+def is_colored(text):
+    for pre in COLOR_PREFIXES:
+        if pre in text:
+            return True
+    return False
+
+
+def is_urlencoded(string):
+    """
+    Check if a string is urlencoded, by:
+    - Decode and compare
+    - Check for code sequences (like %2B)
+
+    :return
+        0 < conf < 1
+
+    Use as
+        while is_urlencoded(string):
+            string = urllib.unquote(string)
+
+    """
+    conf = 0.0
+
+    if urllib.unquote(string) != string:
+        conf += 0.5
+
+    regex = r"%([a-fA-F0-9]{2})"
+    matches = re.findall(regex, string)
+    if len(matches):
+        conf += 0.5
+
+    return conf
+
+
+def is_b64encoded(string):
+    """
+    A string is inferred as base64 encoded, if:
+    - The alphabet used (A-Za-z0-9=+-/_) AND
+    - The length is correct (mult. of 4)
+
+    :returns one of
+        'no' if it's not a valid b64 code
+        'non-text' if when decoded leads to non-printable chars
+        'yes' proceed with decoding and get a nice ascii string
+    """
+    # TODO all possible variations
+    # instead of 'yes' return the variation inferred from the alphabet used
+
+    # TODO ToLower() ruins it!!!!!
 
 
 
@@ -374,7 +434,7 @@ debug = True                                                        # TODO make 
 
 COLOR_OPTS=['off','by-type','try-match']
 color_opt = COLOR_OPTS[2]                                           # TODO make cmdline opt
-                                                                    # TODO make an asciinema for the README now that we have colors
+
 
 class Token:
     fg_colors = [ 'red', 'green', 'yellow', 
@@ -412,8 +472,13 @@ class Token:
 
     def match_and_insert(self, array):
         """
-        Before adding any new token to the global array of recognized ones, search if it has 
-        pre-occured and assign the same color. If not, assign a new one from the pool of free ones. 
+        array.append() encapsulated in the Token object to add custom actions,
+        for every new token: Here's what it does:
+        1.  Search if it has pre-occured in the global array
+            and assign the same color with the previous one.
+            If not, assign a new one from the pool of free ones.
+
+        2.  Smart decode (inspired by Burp)
         """
 
         if color_opt == COLOR_OPTS[2]:                              # "try_match" 
@@ -427,8 +492,38 @@ class Token:
             if not found:
                 self.fcolor = Token.fg_colors[Token.fc]
                 Token.fc = (Token.fc + 1) % len(Token.fg_colors)
-    
+
+        value = self.tuple[1]
+        transformation_chain = ''
+        while True:                                                 # Smart decode
+            did_transformation = False
+            if is_urlencoded(value):                                # 1. URL encoding
+                value = urllib.unquote(value)
+                transformation_chain += 'url '
+                did_transformation = True
+
+            # if is_htmlencoded(value):                               # 2 HTML encoding TODO
+            #     #value = htmldecode(value)
+            #     transformation_chain += 'html '
+            #     did_transformation = True
+
+            if is_b64encoded(value):                                # 3. Base 64 TODO
+                value = base64.b64decode(value)
+                value = termcolor.colored(value, 'on_green')
+                transformation_chain += 'b64 '
+                did_transformation = True
+
+                                                                    # 4. gzip TODO
+            if not did_transformation:
+                break
+
+
+        if debug and transformation_chain:
+            print "[+] Applied transformations: %s. Added as: '%s'" % (transformation_chain, value)
+
+        self.tuple = (self.tuple[0], value)
         array.append(self)
+
             
 
 

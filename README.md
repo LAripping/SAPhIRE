@@ -39,7 +39,8 @@ First manually carry out the flow (assumed Chrome): Open Dev Tools -> `Network` 
 - [ ] Flow-graph w. GUI lib (`matplotlib`?)
 
 
-
+## Gotchas
+* UTF8 will probably result in sth ugly...
 
 
 #### **Behold** 
@@ -48,10 +49,7 @@ from this point and on the README contains random notes and scraps from the deve
 
 
 
-
-
-
-
+------
 
 
 
