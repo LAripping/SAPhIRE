@@ -27,10 +27,11 @@ def isolate_requests(har_file):
     fdomain = raw_input("Filter by domain? (ENTER for no): ")
     if fdomain:
         for e in list(req_resp):                                    # iterating over a copy
-            if fdomain not in e['request']['url']:
+            u = urlparse.urlparse(e['request']['url'])
+            if fdomain not in u.netloc:
                 req_resp.remove(e)
                 if debug: 
-                    print '[+] Filtered out entry with url: '+ e['request']['url']
+                    print '[+] Filtered out entry with url: %s' % u.netloc
 
 
 
@@ -41,6 +42,7 @@ def isolate_requests(har_file):
                     ".img", ".jpg", ".jpeg", ".png", ".svg", ".webp", ".gif", ".bmp", ".ico",
                     ".pdf",                                         # img / doc
                     ]                                               # media (HTML? TODO)
+        junk_ext += [ j.upper() for j in junk_ext ]                 # ...and .JPG has been seen
 
 
         for e in list(req_resp):
