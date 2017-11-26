@@ -25,7 +25,7 @@ def isolate_requests(har_file):
         print "[+] Read %d entries" % len(req_resp)
 
     fdomain = raw_input("Filter by domain? (ENTER for no): ")
-    if not fdomain:
+    if fdomain:
         for e in list(req_resp):                                    # iterating over a copy
             if fdomain not in e['request']['url']:
                 req_resp.remove(e)
@@ -100,64 +100,85 @@ def recognize_tokens():
     for e in req_resp:
         recognized = 0
 
-        ###### url params
-        for p in e['request']['queryString']:
-            t = Token('url', e['time'], (p['name'],p['value'])  )
-            t.match_and_insert(tokens)
-            recognized += 1
-
-        ###### cookies
-        for c in e['request']['cookies']:
-            t = Token('cookie', e['time'], (c['name'],c['value']) )
-            t.match_and_insert(tokens)
-            recognized += 1
-
-        ###### form fields
-        if e['request']['method'] == 'POST':                        # TODO what about PUT ?
-            if 'application/x-www-form-urlencoded' in [ h['value'] for h in e['request']['headers'] ]:
-                                                                    # TODO what about application/form-multipart
-                for f in e['request']['postData']['params']:
-                    t = Token('form', e['time'], (f['name'],f['value']) )
-                    t.match_and_insert(tokens)
-                    recognized += 1
-
-        ###### headers
-        for h in e['request']['headers']:
-            h['name'] = h['name'].lower()
-            h['value']= h['value'].lower()
-            if h['name'] in common_headers:
-                continue
-            t = Token('req_header', e['time'], (h['name'],h['value']) )
-            t.match_and_insert(tokens)
-            recognized += 1
-
-        for h in e['response']['headers']:
-            h['name'] = h['name'].lower()
-            h['value']= h['value'].lower()
-            if h['name'] in common_headers:
-                continue
-            t = Token('resp_header', e['time'], (h['name'],h['value']) )
-            t.match_and_insert(tokens)
-            recognized += 1
-
-        ###### resp body
-        if 'application/json' in [ h['value'] for h in e['response']['headers']]:
-            body = e['response']['content']['text']
-            all_lists = []
-            for l in dict_generator(body):                          # TODO test this
-                all_lists += l
-            all_strings = list(set(all_lists))                      # unique-ify 
-            for s in all_strings:
-                t = Token('resp', e['time'], ('',s))
+        try:
+            ###### url params
+            for p in e['request']['queryString']:
+                t = Token('url', e['time'], (p['name'],p['value'])  )
                 t.match_and_insert(tokens)
                 recognized += 1
+        except KeyError:
+            pass
 
-        ###### html element
-        # TODO scrape <input type=hidden value> from responses
+        try:
+            ###### cookies
+            for c in e['request']['cookies']:
+                t = Token('cookie', e['time'], (c['name'],c['value']) )
+                t.match_and_insert(tokens)
+                recognized += 1
+        except KeyError:
+            pass
 
-        if debug:
-            print '[+] Recognized '+str(recognized)+' tokens in req with time '+str(e['time'])
-    
+        try:
+            ###### form fields
+            if e['request']['method'] == 'POST':                        # TODO what about PUT ?
+                if 'application/x-www-form-urlencoded' in [ h['value'] for h in e['request']['headers'] ]:
+                                                                        # TODO what about application/form-multipart
+                    for f in e['request']['postData']['params']:
+                        t = Token('form', e['time'], (f['name'],f['value']) )
+                        t.match_and_insert(tokens)
+                        recognized += 1
+        except KeyError:
+            pass
+
+        try:
+            ###### headers
+            for h in e['request']['headers']:
+                h['name'] = h['name'].lower()
+                h['value']= h['value'].lower()
+                if h['name'] in common_headers:
+                    continue
+                t = Token('req_header', e['time'], (h['name'],h['value']) )
+                t.match_and_insert(tokens)
+                recognized += 1
+        except KeyError:
+            pass
+
+        try:
+            for h in e['response']['headers']:
+                h['name'] = h['name'].lower()
+                h['value']= h['value'].lower()
+                if h['name'] in common_headers:
+                    continue
+                t = Token('resp_header', e['time'], (h['name'],h['value']) )
+                t.match_and_insert(tokens)
+                recognized += 1
+        except KeyError:
+            pass
+
+        try:
+            ###### resp body
+            if 'application/json' in [ h['value'] for h in e['response']['headers']]:
+                body = e['response']['content']['text']
+                all_lists = []
+                for l in dict_generator(body):                          # TODO test this
+                    all_lists += l
+                all_strings = list(set(all_lists))                      # unique-ify
+                for s in all_strings:
+                    t = Token('resp', e['time'], ('',s))
+                    t.match_and_insert(tokens)
+                    recognized += 1
+        except KeyError:
+            pass
+
+
+
+            ###### html element
+            # TODO scrape <input type=hidden value> from responses
+
+            if debug:
+                print '[+] Recognized '+str(recognized)+' tokens in req with time '+str(e['time'])
+
+
     if debug:
         ans = raw_input('Print 10 random tokens?(y/N): ')
         if ans=='y':
@@ -271,7 +292,7 @@ def fit_print(line, offset, threshold, first_last=False):
 
 def flow_print():
                                                                     # this won't work in the debugger
-    columns = 200 if debug else os.popen('stty size', 'r').read().split()[1]
+    columns = 250 if debug else os.popen('stty size', 'r').read().split()[1]
     divider = 50
     if debug:
         ans = raw_input('Enter req/resp divid er pct. (ENTER -> default=50%): ')
