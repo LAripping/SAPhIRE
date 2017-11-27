@@ -298,9 +298,10 @@ def fit_print(line, offset, threshold, first_last=False):
 
 
 def flow_print():
-                                                                    # TODO detect it with sys.gettrace(), act accordingly
-                                                                    # this won't work in the debugger
-    columns = 250 if debug else os.popen('stty size', 'r').read().split()[1]
+                                                                    # 'stty' trick won't work in the debugger, detect it as explained in the below question instead!
+                                                                    # https://stackoverflow.com/questions/333995/how-to-detect-that-python-code-is-being-executed-through-the-debugger
+    columns = 250 if sys.gettrace() else int(os.popen('stty size', 'r').read().split()[1])
+    print columns
     divider = 50
     if debug:
         ans = raw_input('Enter req/resp divid er pct. (ENTER -> default=50%): ')
