@@ -358,7 +358,8 @@ def flow_print():
                     value   = (rtc.tuple[1][:max_len]+'...') if len(rtc.tuple[1]) > max_len else rtc.tuple[1]
                     colord_token = "%s=%s" % ( key,value )
                     if color_opt!=COLOR_OPTS[0]:
-                        colord_token = termcolor.colored( colord_token, rtc.fcolor)
+                        if rtc.fcolor:  # in try-match mode some tokens are not colored!
+                            colord_token = termcolor.colored( colord_token, rtc.fcolor)
 
                     line += "%s%s" % (colord_token,' ' if j<l-1 else '')
                 fit_print(line, 0, req_thres)
@@ -385,7 +386,8 @@ def flow_print():
                     value = (rtc.tuple[1][:max_len] + '...') if len(rtc.tuple[1]) > max_len else rtc.tuple[1]
                     colord_token = "%s=%s" % (key, value)
                     if color_opt!=COLOR_OPTS[0]:
-                        colord_token = termcolor.colored( colord_token, rtc.fcolor )
+                        if rtc.fcolor:                              # in try-match mode some tokens are not colored!
+                            colord_token = termcolor.colored( colord_token, rtc.fcolor )
 
                     line += "%s%s" % (colord_token,' ' if j<l-1 else '')
                 fit_print(line,resp_offset,columns-2)
@@ -460,8 +462,8 @@ reqs_resp = []
 tokens = []
 debug = True                                                        # TODO make cmdline opt
 
-COLOR_OPTS=['off','by-type','try-match']
-color_opt = COLOR_OPTS[2]                                           # TODO make cmdline opt
+COLOR_OPTS=['off','by-type','try-match-all','try-match']
+color_opt = COLOR_OPTS[3]                                           # TODO make cmdline opt
 
 
 class Token:
@@ -502,14 +504,14 @@ class Token:
         """
         array.append() encapsulated in the Token object to add custom actions,
         for every new token: Here's what it does:
-        1.  Search if it has pre-occured in the global array
-            and assign the same color with the previous one.
-            If not, assign a new one from the pool of free ones.
-
+        1.  Search if it has pre-occured and color accordingly
         2.  Smart decode (inspired by Burp)
         """
 
-        if color_opt == COLOR_OPTS[2]:                              # "try-match"
+        ##### Match Coloring
+
+        if color_opt == COLOR_OPTS[2]:
+            """ try-match-all : If found use same color, but all new tokens get colored"""
             found = False
 
             for t in array:
@@ -521,9 +523,29 @@ class Token:
                 self.fcolor = Token.fg_colors[Token.fc]
                 Token.fc = (Token.fc + 1) % len(Token.fg_colors)
 
+
+        elif color_opt == COLOR_OPTS[3]:
+            """ try-match : If found use same color, but color only the tokens seen at least before """
+            found = False
+
+            for t in array:
+                if self.tuple[1] == t.tuple[1]:
+                    found = True
+                    if t.fcolor:
+                        self.fcolor = t.fcolor
+                    else:
+                        self.fcolor = Token.fg_colors[Token.fc]     # new color for both New and Old
+                        Token.fc = (Token.fc + 1) % len(Token.fg_colors)
+
+            if not found:
+                self.fcolor = ''
+
+
+        ##### Smart decoding
+
         value = self.tuple[1]
         transformation_chain = ''
-        while True:                                                 # Smart decode
+        while True:
             did_transformation = False
             if is_urlencoded(value):                                # 1. URL encoding
                 value = urllib.unquote(value)
