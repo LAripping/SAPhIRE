@@ -5,11 +5,11 @@ import json
 import urllib
 import urlparse
 from matplotlib.cbook import dict_delall
-
 import termcolor
 import os
 import string
 import re
+import argparse
 #TODO that pip install -r requirements.txt trick
 
 
@@ -298,6 +298,7 @@ def fit_print(line, offset, threshold, first_last=False):
 
 
 def flow_print():
+                                                                    # TODO detect it with sys.gettrace(), act accordingly
                                                                     # this won't work in the debugger
     columns = 250 if debug else os.popen('stty size', 'r').read().split()[1]
     divider = 50
@@ -358,7 +359,7 @@ def flow_print():
                     value   = (rtc.tuple[1][:max_len]+'...') if len(rtc.tuple[1]) > max_len else rtc.tuple[1]
                     colord_token = "%s=%s" % ( key,value )
                     if color_opt!=COLOR_OPTS[0]:
-                        if rtc.fcolor:  # in try-match mode some tokens are not colored!
+                        if rtc.fcolor:                              # in try-match mode some tokens are not colored!
                             colord_token = termcolor.colored( colord_token, rtc.fcolor)
 
                     line += "%s%s" % (colord_token,' ' if j<l-1 else '')
@@ -455,15 +456,15 @@ def is_b64encoded(string):
 
 
 
-####### GLOBALS
+####### GLOBALS (default values if not specified on cmdline)
 
 common_headers = []
 reqs_resp = []
 tokens = []
-debug = True                                                        # TODO make cmdline opt
+debug = False
 
-COLOR_OPTS=['off','by-type','try-match-all','try-match']
-color_opt = COLOR_OPTS[3]                                           # TODO make cmdline opt
+COLOR_OPTS=['off','by-type','try-match','try-match-all']
+color_opt = COLOR_OPTS[2]
 
 
 class Token:
@@ -479,7 +480,7 @@ class Token:
             exit('Unsupported type \''+ttype+'\'!')
         self.type = ttype
         self.time = ttime
-        
+        self.fcolor = ''
         if color_opt == COLOR_OPTS[1]:                              # "by-type" : loop colors for same-typed tokens, 
             bc = Token.types.index(ttype) % len(Token.bg_colors)
             self.bcolor = Token.bg_colors[ bc ]
@@ -510,7 +511,7 @@ class Token:
 
         ##### Match Coloring
 
-        if color_opt == COLOR_OPTS[2]:
+        if color_opt == COLOR_OPTS[3]:
             """ try-match-all : If found use same color, but all new tokens get colored"""
             found = False
 
@@ -524,7 +525,7 @@ class Token:
                 Token.fc = (Token.fc + 1) % len(Token.fg_colors)
 
 
-        elif color_opt == COLOR_OPTS[3]:
+        elif color_opt == COLOR_OPTS[2]:
             """ try-match : If found use same color, but color only the tokens seen at least before """
             found = False
 
@@ -579,18 +580,26 @@ class Token:
 
 ####### MAIN
 
-if __name__ == "__main__":
-    if len(sys.argv) == 1:
-        exit( "Usage: %s flow.har" % sys.argv[0] )
-        # TODO replace with proper arg parsing
+if __name__ == "__main__":                                          # TODO split files (Token, saphire.py, utils)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("harfile", help="the recorded .har flow to analyze")
+    parser.add_argument("-d", "--debug", help="fine-tune settings and get more verbose output", action="store_true")
+    parser.add_argument("-c", "--color", type=int, choices=[0, 1, 2, 3],
+                        help="color setting: 0=Off, 1=by-type, 2=try-match, 3=try-match-all. See README for more")
+    args = parser.parse_args()
+    if args.debug:
+        debug = True
+    if args.color:
+        color_opt = COLOR_OPTS[args.color]
 
-    isolate_requests( sys.argv[1] )
+
+    isolate_requests( args.harfile )
     recognize_tokens()
     
 
     graph = False                                                   # TODO make cmdline opt
     if graph:
-#       flow_graph() TODO gui
+#       flow_graph()                                                # TODO gui
         pass
     else:
         flow_print()

@@ -32,10 +32,25 @@ First manually carry out the flow (assumed Chrome): Open Dev Tools -> `Network` 
 
 
 
+### Options
+`-c, --color`Determines the way the tokens will be colored (meaningful only in flow_print mode) Possible Values:
+0. ` off` no funky colors and stuff
+
+1. `by-type` rather dumb, fuzz around the colors for each type, no affiliation
+
+2. `try-match` *the suggested and default mode*, Color every token that occurs more than once, all-occurancies with the same color!
+
+3. `try-match-all` can't live without colors? Color every token and same ones get the same color.
+
+   ​
+
+
+
+
 
 ## <u>TODOs</u>
 
-- [ ] Flow-print with colors
+- [x] Flow-print with colors
 - [ ] Flow-graph w. GUI lib (`matplotlib`?)
 
 
