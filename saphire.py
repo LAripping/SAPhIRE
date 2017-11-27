@@ -136,7 +136,7 @@ def recognize_tokens():
             ###### headers
             for h in e['request']['headers']:
                 h['name'] = h['name'].lower()
-                h['value']= h['value'].lower()
+                h['value']= h['value']
                 if h['name'] in common_headers:
                     continue
                 t = Token('req_header', e['time'], (h['name'],h['value']) )
@@ -148,10 +148,15 @@ def recognize_tokens():
         try:
             for h in e['response']['headers']:
                 h['name'] = h['name'].lower()
-                h['value']= h['value'].lower()
+                h['value']= h['value']
                 if h['name'] in common_headers:
                     continue
-                t = Token('resp_header', e['time'], (h['name'],h['value']) )
+                if h['name'] == 'set-cookie':
+                    cookie_name  = h['value'].split('=')[0]         # set-cookie: remember_user_token=BAhbB1sGaQMhewFJI;
+                    cookie_value = h['value'].split('=')[1].split(';')[0]
+                    t = Token('set-cookie', e['time'], (cookie_name,cookie_value))
+                else:
+                    t = Token('resp_header', e['time'], (h['name'],h['value']) )
                 t.match_and_insert(tokens)
                 recognized += 1
         except KeyError:
@@ -369,7 +374,7 @@ def flow_print():
         fit_print(line,resp_offset, columns-2)
         fit_print('-'*500, resp_offset, columns-2)
 
-        for t_type in ['resp_header','resp','html']:
+        for t_type in ['resp_header','set-cookie','resp','html']:
             l = len(req_tokens_by_type[t_type])
             if l:
                 line = "%10s|" % t_type
@@ -463,7 +468,7 @@ class Token:
     fg_colors = [ 'red', 'green', 'yellow', 
                  'blue', 'magenta', 'cyan', 'white']
     bg_colors = [ 'on_'+fc for fc in fg_colors ]
-    types = ['url', 'cookie', 'req_header', 'resp_header', 'form', 'resp', 'html'] 
+    types = ['url', 'cookie', 'set-cookie', 'req_header', 'resp_header', 'form', 'resp', 'html']
     fc = 0                                                          # static =class-scoped counter for fg color idx in array
 
     def __init__(self, ttype, ttime, ttuple):
@@ -504,7 +509,7 @@ class Token:
         2.  Smart decode (inspired by Burp)
         """
 
-        if color_opt == COLOR_OPTS[2]:                              # "try_match" 
+        if color_opt == COLOR_OPTS[2]:                              # "try-match"
             found = False
 
             for t in array:
