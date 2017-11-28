@@ -298,10 +298,9 @@ def fit_print(line, offset, threshold, first_last=False):
 
 
 def flow_print():
-                                                                    # 'stty' trick won't work in the debugger, detect it as explained in the below question instead!
+                                                                    # 'yy' trick won't work in the debugger, detect it as explained in the below question instead!
                                                                     # https://stackoverflow.com/questions/333995/how-to-detect-that-python-code-is-being-executed-through-the-debugger
     columns = 250 if sys.gettrace() else int(os.popen('stty size', 'r').read().split()[1])
-    print columns
     divider = 50
     if debug:
         ans = raw_input('Enter req/resp divid er pct. (ENTER -> default=50%): ')
@@ -581,38 +580,49 @@ class Token:
 
         ##### Smart decoding
 
-        value = self.tuple[1]
+        key = self.smart_decode(self.tuple[0])
+        value = self.smart_decode(self.tuple[1])
+
+        self.tuple = (key, value)
+        array.append(self)
+
+
+
+
+
+
+
+    def smart_decode(self, string):
         transformation_chain = ''
         while True:
             did_transformation = False
-            if is_urlencoded(value):                                # 1. URL encoding
-                value = urllib.unquote(value)
+            if is_urlencoded(string):                               # 1. URL encoding
+                string = urllib.unquote(string)
                 transformation_chain += 'url '
                 did_transformation = True
 
-            # if is_htmlencoded(value):                               # 2 HTML encoding TODO
+            # if is_htmlencoded(value):                             # 2 HTML encoding TODO
             #     #value = htmldecode(value)
             #     transformation_chain += 'html '
             #     did_transformation = True
 
-            if is_b64encoded(value):                                # 3. Base 64 TODO
-                value = base64.b64decode(value)
-                value = termcolor.colored(value, 'on_green')
+            if is_b64encoded(string):                               # 3. Base 64 TODO
+                string = base64.b64decode(string)
+                string = termcolor.colored(string, 'on_green')
                 transformation_chain += 'b64 '
                 did_transformation = True
 
-                                                                    # 4. gzip TODO
+                                                                    # 4. Gzip TODO
             if not did_transformation:
                 break
 
-
         if debug and transformation_chain:
-            print "[+] Applied transformations: %s. Added as: '%s'" % (transformation_chain, value)
+            print "[+] Applied transformations: %s. Added as: '%s'" % (transformation_chain, string)
 
-        self.tuple = (self.tuple[0], value)
-        array.append(self)
+        return string
 
-            
+
+
 
 
 ####### MAIN
