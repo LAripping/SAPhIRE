@@ -33,7 +33,7 @@ First manually carry out the flow (assumed Chrome): Open Dev Tools -> `Network` 
 
 
 ### Options
-`-c, --color`Determines the way the tokens will be colored (meaningful only in flow_print mode) Possible Values:
+`-c, --color` Determines the way the tokens will be colored (meaningful only in flow_print mode) Possible Values:
 0. ` off` no funky colors and stuff
 
 1. `by-type` rather dumb, fuzz around the colors for each type, no affiliation
@@ -43,6 +43,31 @@ First manually carry out the flow (assumed Chrome): Open Dev Tools -> `Network` 
 3. `try-match-all` can't live without colors? Color every token and same ones get the same color.
 
    ​
+
+
+`-x, --expand` Specify how to spread the different tokens of each category (meaningful only in flow_print mode) Possible Values:
+
+* `h` for Horizontal expansion. This will lead to a summarized view focusing more on the flow . like: 
+
+```
+
+ ____________________________________________________________________________________________________________________
+|         #4|18:53:43.42                                                                                             |
+|        GET|akispetretzikis.com /xtcore.js                                                                          |
+| ----------+----------------------------------------------------------------------------------------------------... |
+|     cookie|__atuvc=1|48 __atuvs=5a1b0d78ddce9c96000 xtvrn=$568522$ cookies_accept=1 _eproductions.gr_session=BA... |
+ ____________________________________________________________________________________________________________________
+ 
+
+
+```
+
+* `v` for Vertical expansion, *the default view*. Now we see the tokens in detail occupying more screen real estate per-request. 
+
+```
+
+```
+
 
 
 

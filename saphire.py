@@ -154,9 +154,9 @@ def recognize_tokens():
                 if h['name'] == 'set-cookie':
                     cookie_name  = h['value'].split('=')[0]         # set-cookie: remember_user_token=BAhbB1sGaQMhewFJI;
                     cookie_value = h['value'].split('=')[1].split(';')[0]
-                    t = Token('set-cookie', e['time'], (cookie_name,cookie_value))
+                    t = Token('set_cookie', e['time'], (cookie_name,cookie_value))
                 else:
-                    t = Token('resp_header', e['time'], (h['name'],h['value']) )
+                    t = Token('rsp_header', e['time'], (h['name'],h['value']) )
                 t.match_and_insert(tokens)
                 recognized += 1
         except KeyError:
@@ -315,11 +315,12 @@ def flow_print():
         print "Request-info will span %d/%d chars. Responses start on %d" % (req_thres, columns, resp_offset)
 
     max_len = 25                                                    # limit the length of tokens displayed, need to print as much as we can
-    if debug:                                                       # for a cool demonstration, not the full value of it! (do this later manually)
-        ans = raw_input('Enter maximum characters of tokens to be shown. (ENTER -> default=25)')
-        if ans:
-            max_len = int(ans)
-            print "Max len set to %d" % max_len
+    if xpand == XPAND_HORZ:                                         # only used in XPAND_HORZ
+        if debug:                                                   # for a short, cool demonstration. Not the full value of it! (do this later manually)
+            ans = raw_input('Enter maximum characters of tokens to be shown. (ENTER -> default=25)')
+            if ans:
+                max_len = int(ans)
+                print "Max len set to %d" % max_len
 
 
     for i in range(len(req_resp)):
@@ -352,20 +353,35 @@ def flow_print():
         for t_type in ['url', 'cookie', 'req_header', 'form']:
             l = len(req_tokens_by_type[t_type])
             if l:
-                line = "%10s|" % t_type
-                for j in range(l):
-                    rtc = req_tokens_by_type[t_type][j]
+                if xpand == XPAND_HORZ:
 
-                    key     = rtc.tuple[0]
-                    value   = (rtc.tuple[1][:max_len]+'...') if len(rtc.tuple[1]) > max_len else rtc.tuple[1]
-                    colord_token = "%s=%s" % ( key,value )
-                    if color_opt!=COLOR_OPTS[0]:
-                        if rtc.fcolor:                              # in try-match mode some tokens are not colored!
-                            colord_token = termcolor.colored( colord_token, rtc.fcolor)
+                    line = "%10s|" % t_type
+                    for j in range(l):
+                        rtc = req_tokens_by_type[t_type][j]
 
-                    line += "%s%s" % (colord_token,' ' if j<l-1 else '')
-                fit_print(line, 0, req_thres)
-        #        sys.exit(0)
+                        key     = rtc.tuple[0]
+                        value   = (rtc.tuple[1][:max_len]+'...') if len(rtc.tuple[1]) > max_len else rtc.tuple[1]
+                        colord_token = "%s=%s" % ( key,value )
+                        if color_opt!=COLOR_OPTS[0]:
+                            if rtc.fcolor:                          # in try-match mode some tokens are not colored!
+                                colord_token = termcolor.colored( colord_token, rtc.fcolor)
+
+                        line += "%s%s" % (colord_token,' ' if j<l-1 else '')
+                    fit_print(line, 0, req_thres)
+
+                elif xpand == XPAND_VERT:
+
+                    for j in range(l):
+                        line = "%10s|" % ' '
+                        if j==0:                                    # special care for the first line
+                            line = "%10s|" % t_type
+
+                        rtc = req_tokens_by_type[t_type][j]
+                        colord_token = "%s=%s" % (rtc.tuple[0], rtc.tuple[1])
+                        if color_opt != COLOR_OPTS[0]:
+                            if rtc.fcolor:                          # in try-match mode some tokens are not colored!
+                                colord_token = termcolor.colored(colord_token, rtc.fcolor)
+                        fit_print(line + colord_token, 0, req_thres)
 
         fit_print('_'*500, 0, req_thres, True)
         
@@ -377,22 +393,39 @@ def flow_print():
         fit_print(line,resp_offset, columns-2)
         fit_print('-'*500, resp_offset, columns-2)
 
-        for t_type in ['resp_header','set-cookie','resp','html']:
+        for t_type in ['rsp_header','set_cookie','resp','html']:
             l = len(req_tokens_by_type[t_type])
             if l:
-                line = "%10s|" % t_type
-                for j in range(l):
-                    rtc = req_tokens_by_type[t_type][j]
+                if xpand == XPAND_HORZ:
 
-                    key = rtc.tuple[0]
-                    value = (rtc.tuple[1][:max_len] + '...') if len(rtc.tuple[1]) > max_len else rtc.tuple[1]
-                    colord_token = "%s=%s" % (key, value)
-                    if color_opt!=COLOR_OPTS[0]:
-                        if rtc.fcolor:                              # in try-match mode some tokens are not colored!
-                            colord_token = termcolor.colored( colord_token, rtc.fcolor )
+                    line = "%10s|" % t_type
+                    for j in range(l):
+                        rtc = req_tokens_by_type[t_type][j]
 
-                    line += "%s%s" % (colord_token,' ' if j<l-1 else '')
-                fit_print(line,resp_offset,columns-2)
+                        key     = rtc.tuple[0]
+                        value   = (rtc.tuple[1][:max_len]+'...') if len(rtc.tuple[1]) > max_len else rtc.tuple[1]
+                        colord_token = "%s=%s" % ( key,value )
+                        if color_opt!=COLOR_OPTS[0]:
+                            if rtc.fcolor:                          # in try-match mode some tokens are not colored!
+                                colord_token = termcolor.colored( colord_token, rtc.fcolor)
+
+                        line += "%s%s" % (colord_token,' ' if j<l-1 else '')
+                    fit_print(line,resp_offset,columns-2)
+
+                elif xpand == XPAND_VERT:
+
+                    for j in range(l):
+                        line = "%10s|" % ' '
+                        if j==0:                                    # special care for the first line
+                            line = "%10s|" % t_type
+
+                        rtc = req_tokens_by_type[t_type][j]
+                        colord_token = "%s=%s" % (rtc.tuple[0], rtc.tuple[1])
+                        if color_opt != COLOR_OPTS[0]:
+                            if rtc.fcolor:                          # in try-match mode some tokens are not colored!
+                                colord_token = termcolor.colored(colord_token, rtc.fcolor)
+                        fit_print(line + colord_token,resp_offset,columns-2)
+
 
         fit_print('_'*500, resp_offset, columns-2,True)
         print '\n'
@@ -467,12 +500,15 @@ debug = False
 COLOR_OPTS=['off','by-type','try-match','try-match-all']
 color_opt = COLOR_OPTS[2]
 
+(XPAND_HORZ, XPAND_VERT)= ('h','v')
+xpand = XPAND_HORZ
+
 
 class Token:
     fg_colors = [ 'red', 'green', 'yellow', 
                  'blue', 'magenta', 'cyan', 'white']
     bg_colors = [ 'on_'+fc for fc in fg_colors ]
-    types = ['url', 'cookie', 'set-cookie', 'req_header', 'resp_header', 'form', 'resp', 'html']
+    types = ['url', 'cookie', 'set_cookie', 'req_header', 'rsp_header', 'form', 'resp', 'html']
     fc = 0                                                          # static =class-scoped counter for fg color idx in array
 
     def __init__(self, ttype, ttime, ttuple):
@@ -587,18 +623,23 @@ if __name__ == "__main__":                                          # TODO split
     parser.add_argument("-d", "--debug", help="fine-tune settings and get more verbose output", action="store_true")
     parser.add_argument("-c", "--color", type=int, choices=[0, 1, 2, 3],
                         help="color setting: 0=Off, 1=by-type, 2=try-match, 3=try-match-all. See README for more")
+    parser.add_argument("-x","--expand", choices=['h','v'],
+                        help="dimension to expand the list of tokens per-category: h=Horizontally, v=Vertically. See README for more")
+
+
     args = parser.parse_args()
     if args.debug:
         debug = True
     if args.color:
         color_opt = COLOR_OPTS[args.color]
-
+    if args.expand:
+        xpand = args.expand
 
     isolate_requests( args.harfile )
     recognize_tokens()
     
 
-    graph = False                                                   # TODO make cmdline opt
+    graph = False                                                   # TODO make cmdline switch --flow-print vs --flow-graph (mutually_exclusive)
     if graph:
 #       flow_graph()                                                # TODO gui
         pass
