@@ -4,12 +4,12 @@ import sys
 import json
 import urllib
 import urlparse
-from matplotlib.cbook import dict_delall
 import termcolor
 import os
 import string
 import re
 import argparse
+import time
 #TODO that pip install -r requirements.txt trick
 
 
@@ -105,7 +105,7 @@ def recognize_tokens():
         try:
             ###### url params
             for p in e['request']['queryString']:
-                t = Token('url', e['time'], (p['name'],p['value'])  )
+                t = Token('url', e['saphireTime'], (p['name'],p['value'])  )
                 t.match_and_insert(tokens)
                 recognized += 1
         except KeyError:
@@ -114,7 +114,7 @@ def recognize_tokens():
         try:
             ###### cookies
             for c in e['request']['cookies']:
-                t = Token('cookie', e['time'], (c['name'],c['value']) )
+                t = Token('cookie', e['saphireTime'], (c['name'],c['value']) )
                 t.match_and_insert(tokens)
                 recognized += 1
         except KeyError:
@@ -126,7 +126,7 @@ def recognize_tokens():
                 if 'application/x-www-form-urlencoded' in [ h['value'] for h in e['request']['headers'] ]:
                                                                         # TODO what about application/form-multipart
                     for f in e['request']['postData']['params']:
-                        t = Token('form', e['time'], (f['name'],f['value']) )
+                        t = Token('form', e['saphireTime'], (f['name'],f['value']) )
                         t.match_and_insert(tokens)
                         recognized += 1
         except KeyError:
@@ -139,7 +139,7 @@ def recognize_tokens():
                 h['value']= h['value']
                 if h['name'] in common_headers:
                     continue
-                t = Token('req_header', e['time'], (h['name'],h['value']) )
+                t = Token('req_header', e['saphireTime'], (h['name'],h['value']) )
                 t.match_and_insert(tokens)
                 recognized += 1
         except KeyError:
@@ -154,9 +154,9 @@ def recognize_tokens():
                 if h['name'] == 'set-cookie':
                     cookie_name  = h['value'].split('=')[0]         # set-cookie: remember_user_token=BAhbB1sGaQMhewFJI;
                     cookie_value = h['value'].split('=')[1].split(';')[0]
-                    t = Token('set_cookie', e['time'], (cookie_name,cookie_value))
+                    t = Token('set_cookie', e['saphireTime'], (cookie_name,cookie_value))
                 else:
-                    t = Token('rsp_header', e['time'], (h['name'],h['value']) )
+                    t = Token('rsp_header', e['saphireTime'], (h['name'],h['value']) )
                 t.match_and_insert(tokens)
                 recognized += 1
         except KeyError:
@@ -171,7 +171,7 @@ def recognize_tokens():
                     all_lists += l
                 all_strings = list(set(all_lists))                      # unique-ify
                 for s in all_strings:
-                    t = Token('resp', e['time'], ('',s))
+                    t = Token('resp', e['saphireTime'], ('',s))
                     t.match_and_insert(tokens)
                     recognized += 1
         except KeyError:
@@ -183,7 +183,7 @@ def recognize_tokens():
             # TODO scrape <input type=hidden value> from responses
 
             if debug:
-                print '[+] Recognized '+str(recognized)+' tokens in req with time '+str(e['time'])
+                print '[+] Recognized '+str(recognized)+' tokens in req with saphireTime '+str(e['saphireTime'])
 
 
     if debug:
@@ -330,7 +330,7 @@ def flow_print():
         
         any_tokens = False
         for t in tokens:
-            if t.time == e['time']:                                 # filter tokens by request-time (kepp only the ones of current req_resp)
+            if t.time == e['saphireTime']:                          # filter tokens by request-time (keep only the ones of current req_resp)
                 any_tokens = True
                 req_tokens_by_type[ t.type ].append(t)                
 
@@ -492,7 +492,7 @@ def is_b64encoded(string):
 ####### GLOBALS (default values if not specified on cmdline)
 
 common_headers = []
-reqs_resp = []
+req_resp = []
 tokens = []
 debug = False
 
@@ -625,6 +625,52 @@ class Token:
 
 
 
+
+
+
+
+
+def hartime_to_saphire(time_string):
+    """about time:
+
+    > time_string = "2017-11-28T20:14:53.852Z"
+
+    > time_struct = time.strptime( time_string.split('.')[0], "%Y-%m-%dT%H:%M:%S")
+    time.struct_time(tm_year=2017, tm_mon=11, tm_mday=28, tm_hour=20, tm_min=14, tm_sec=53, tm_wday=1, tm_yday=332, tm_isdst=-1)
+
+    > timestamp = time.mktime(time_struct)
+    1511892893.0
+
+    > mili = float( '.'+time_string.split('.')[1].split('Z')[0] )
+    0.852
+
+    > timestamp+mili
+    1511892893.852
+    """
+    time_struct = time.strptime( time_string.split('.')[0], "%Y-%m-%dT%H:%M:%S")
+    timestamp = time.mktime(time_struct)
+    mili = float( '.'+time_string.split('.')[1].split('Z')[0] )
+    return timestamp+mili
+
+
+def set_saphireTimes():
+   #TODO try commented oneliner below if it works"""
+   req_resp2 = [ e.update( {"saphireTime":hartime_to_saphire(e["startedDateTime"])} )          for e in req_resp ]
+
+   # req_resp2 = []
+   # for e in req_resp:
+   #     e["saphireTime"] = hartime_to_saphire(e["startedDateTime"])
+   #     req_resp2.append(e)
+   #return req_resp2
+
+
+def sort_list_of_dicts_by_key(list, dictkey):
+    return sorted(list, key=lambda d: d[dictkey])
+
+
+
+
+
 ####### MAIN
 
 if __name__ == "__main__":                                          # TODO split files (Token, saphire.py, utils)
@@ -646,8 +692,9 @@ if __name__ == "__main__":                                          # TODO split
         xpand = args.expand
 
     isolate_requests( args.harfile )
+    set_saphireTimes()                                   # make new field with unique timestamp
+    req_resp = sort_list_of_dicts_by_key(req_resp,'saphireTime')    # TODO arg=key in the req{} . Our custom time added in the step above
     recognize_tokens()
-    
 
     graph = False                                                   # TODO make cmdline switch --flow-print vs --flow-graph (mutually_exclusive)
     if graph:
