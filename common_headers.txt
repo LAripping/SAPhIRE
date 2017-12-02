@@ -55,7 +55,7 @@ Referer
 Referrer-Policy
 Retry-After
 Server
-# Set-Cookie
+Set-Cookie
 Set-Cookie2
 SourceMap
 Strict-Transport-Security

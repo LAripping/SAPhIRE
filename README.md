@@ -4,27 +4,45 @@
 
 _**S**imple **API** **R**everse **E**ngineering **h**elper_
 
->  *Never again shall one be limited by HTTPS / SSL-pinning* 		
->
->  [--John Lock](https://i.ytimg.com/vi/f3KwdmzHapI/maxresdefault.jpg)
+
+
+## Rationale
+
+S A P h I R E is a tool to assist reverse engineering of arbitrary API flows seen in the wild. Flows like Authentication protocols which are often proprietary, undocumented and stuffed with minified JS rendering them completely obfuscated.
+
+It Isolates "tokens" like 
+
+* Cookies
+* Headers
+* URL parameters
+* Form fields 
+
+...and highlight them to make the underlying logic obvious. 
 
 
 
+## Selling Points
+
+- [x] **Auto-decodes tokens** (html/url) to spare the reverser of these easy but tiring chores
+- [x] **Ignores standard tokens** like [common Headers](/common_headers.txt) (e.g.  `Accept` / `Content-type` ) headers or `?encoding=utf-8` params.
+- [x] **Filters out irrelevant requests && Ignores media/junk/...** with prompts at runtime.
 
 
-## <u>Rationale</u>
+- [x] **Highlights common tokens** with common colors : The ones repeated throughout the (massive) flows
 
-S A P h I R E is a tool to assist reverse engineering of arbitrary API flows seen in the wild. Flows like Authentication protocols which are often proprietary, undocumented, stuffed with minified JS rendering them completely obfuscated.
+      Although in a manual examination, a trained eye will see the business logic being implemented, the volume of data is sometimes too much for a human to connect the dots
 
-A trained eye will see the business logic being implemented but the volume of data is sometimes exceeding.
+      *Bonus: Configurable colors*
 
-So SAPhIRE (yes, I cheated on the name) Isolates "tokens" like Cookies / Headers / URL parameters / Form fields and highlight them to make the underlying logic obvious. Note that we only care about non-standard tokens like uncommon Headers (e.g. not `Accept` / `Content-type` ) headers or `?encoding=utf-8` params.
+- [x] **Extracts the flow from the browser**: in HAR files, see Usage below.
 
-It's still a **WIP** and very pre-mature but as you can see from the demo execution below, basic functionality and primitive output printing do work.
+      No need for MITM proxies / network sniffing to capture the flow. 
+
+      No more certificate installing, pinning-bypasses.
 
 
 
-## <u>Usage</u>
+## Usage
 
 First manually carry out the flow (assumed Chrome): Open Dev Tools -> `Network` -> Check `Preserve Log`, clear it and... -> ( do the flow ) -> Right click -> `Save as HAR with content`. Then:
 
@@ -65,6 +83,30 @@ First manually carry out the flow (assumed Chrome): Open Dev Tools -> `Network` 
 * `v` for Vertical expansion, *the default view*. Now we see the tokens in detail occupying more screen real estate per-request. 
 
 ```
+ _____________________________________________________________________
+|       #160|20:15:48.27                                              |
+|        GET|cdn.syndication.twimg.com /widgets/timelines/44954441... |
+| ----------+-----------------------------------------------------... |
+|        url|callback=__twttr.callbacks.tl_i0_449544415724326914_ol... |
+|           |dnt=false                                       |
+|           |domain=akispetretzikis.com                      |
+|           |lang=en                                         |
+|           |suppress_response_codes=true                    |
+|           |t=1679889                                                |
+|           |tz=GMT+0200                                              |
+|     cookie|lang=en                                         |
+ _____________________________________________________________________
+                                                                       __________________________________________________________________
+                                                                      |  200                                                             |
+                                                                      | -------------------------------------------------------------... |
+                                                                      | rsp_header|x-cache=MISS                                          |
+                                                                      |           |x-served-by=cache-tw-par1-2-TWPAR1           |
+                                                                      |           |x-response-time=247                                   |
+                                                                      |           |x-timer=S1511900149.759974,VS0,VE258                  |
+                                                                      |           |x-connection-hash=c043173fd3fa017e6d127140aa898aa6... |
+                                                                       __________________________________________________________________
+
+
 
 ```
 
@@ -73,97 +115,43 @@ First manually carry out the flow (assumed Chrome): Open Dev Tools -> `Network` 
 
 
 
-## <u>TODOs</u>
+## TODOs
 
 - [x] Flow-print with colors
-- [ ] Flow-graph w. GUI lib (`matplotlib`?)
+
+- [ ] smart decoding: url / html / ~~base64~~ / ~~gzip~~ 
+
+- [ ] tokens from: scraping  `<input type=hidden value>` from html
+
+- [ ] ignore junk tokens (like locale, encoding, lang)
+
+- [ ] Flow-graph w. GUI lib ( `matplotlib` / `pyqt` / ... ?)
+
+- [ ] Prepare Release:
+
+      * Installation directives (`pip install -r requirements` if any external modules)
+
+
+      * Write a Use Case section with a flow that is revealed. Must highlight most of:
+        * smart decoding 
+        * tokens leading to curl- ing
+
+      * "Fuzz" cmd line parameters and inputs as manual testing
+
+      * explain common-headers trick
+
+      * explain why smart decoding can't work:
+
+        * When to stop? -> When is it a valid word? 
+        * Arbitrary schemes could be used, prefer manual (out of the "low-hanging fruit" mentality of the tool)
+
+        ​
+
+      ​
 
 
 ## Gotchas
 * UTF8 will probably result in sth ugly...
-
-
-#### **Behold** 
-
-from this point and on the README contains random notes and scraps from the development. So that's it! Read no more.
-
-
-
-------
-
-
-
-
-## Intended Usage
-
-* Need to work despite HTTPS / Cert pinning so
-* ***Chrome extension*** 
-* so lang=JS
-
-  ​
-
-
-
-
-
-- [ ] permission to read Reqs/Resps? 
-
-      ​
-
- * If not ***HAR parser***.    
- * Click Dev Tools -> Network -> <do flow> -> Right click -> Save as HAR with content. 
- * HARs are just a json files
-* so lang=Python
-* Display flow in terminal , if flag draw in ext file , save all
-
-
-
-
-
-
-
-
-## Internals
-
-
-* isolate Reqs / Resps 
-
-* Filter by domains
-
-* Ignore data (styles / fonts / media / images / `data:` urls)
-
-* Recognize important tokens:
-
-  * URL parameters (`entry[request][querysting][0][name]`)
-  * Form fields (all types)
-  * Cookies
-  * important Headers  (non-std)
-  * Plain JSON in Resp bodies 
-  * HTML scrape form input fields in Resp bodies
-
-* Decode tokens 
-
-  * base64
-  * gzip
-  * url-decode
-  * html-decode
-  * hex
-  * ascii hex
-
-  recursive
-
-  [Smart decoding](https://portswigger.net/burp/help/decoder.html) 
-
-* Output: Required Reqs, for each
-
-
-  * Method
-  * URL
-  * tokens
-
-* Graph with colored tokens throughout the flow (Left2Right / Top2Bottom)
-
-
 
 
 
@@ -173,7 +161,9 @@ from this point and on the README contains random notes and scraps from the deve
 
 ## Debugging
 
-Use https://toolbox.googleapps.com/apps/har_analyzer/ and  [this .har](gameboard.pentestcyprus.org.har) 
+Use https://toolbox.googleapps.com/apps/har_analyzer/ for a tool as close as the Browser's Dev. Tab (after closing it)
+
+Included example .har files
 
 Flow to highlight (required): (couldn't verify)
 
