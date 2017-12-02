@@ -212,6 +212,9 @@ def make_printable(text):
                 if text[i:i+5] in COLOR_PREFIXES:
                     ret += text[i:i+5]
                     i += 4
+                elif text[i:i+4] in COLOR_ATTR_PREFIXES:
+                    ret += text[i:i+4]
+                    i += 3
                 elif text[i:i+4] in termcolor.RESET:
                     ret += text[i:i+4]
                     i += 3
@@ -303,7 +306,7 @@ def fit_print(line, offset, threshold, first_last=False):
 
 
 def flow_print():
-                                                                    # 'yy' trick won't work in the debugger, detect it as explained in the below question instead!
+                                                                    # 'stty' trick won't work in the debugger, detect it as explained in the below question instead!
                                                                     # https://stackoverflow.com/questions/333995/how-to-detect-that-python-code-is-being-executed-through-the-debugger
     columns = 250 if sys.gettrace() else int(os.popen('stty size', 'r').read().split()[1])
     divider = 50
@@ -347,7 +350,7 @@ def flow_print():
 
         ##### Request
         fit_print('_'*500, 0, req_thres, True)
-        line =    "%10s|%s" % ('#'+str(i), e['startedDateTime'][11:22]) 
+        line =    "%10s|%s (saphireTime:%s)" % ('#'+str(i), e['startedDateTime'][11:22], e['saphireTime'])
         fit_print(line, 0, req_thres)                               
         u = urlparse.urlparse(e['request']['url'])
         line =    "%10s|%s %s" % (e['request']['method'], u.netloc, u.path)
@@ -439,9 +442,10 @@ def flow_print():
 
 
 
-COLOR_PREFIXES = [ "\033[%dm" % n     for n in range(30,48) ]
+COLOR_PREFIXES =        [ "\033[%dm" % n     for n in range(30,48) ]      # colors like 'red'
+COLOR_ATTR_PREFIXES =   [ "\033[%dm" % n     for n in range(1,9)   ]      # attrs like 'underline'
 def is_colored(text):
-    for pre in COLOR_PREFIXES:
+    for pre in COLOR_PREFIXES+COLOR_ATTR_PREFIXES:
         if pre in text:
             return True
     return False
@@ -550,7 +554,7 @@ COLOR_OPTS=['off','by-type','try-match','try-match-all']
 color_opt = COLOR_OPTS[2]
 
 (XPAND_HORZ, XPAND_VERT)= ('h','v')
-xpand = XPAND_HORZ
+xpand = XPAND_VERT
 
 
 class Token:
@@ -595,6 +599,14 @@ class Token:
         2.  Smart decode (inspired by Burp)
         """
 
+        ##### Smart decoding
+
+        key = smart_decode(self.tuple[0])
+        value = smart_decode(self.tuple[1])
+
+        self.tuple = (key, value)
+
+
         ##### Match Coloring
 
         if color_opt == COLOR_OPTS[3]:
@@ -610,7 +622,6 @@ class Token:
                 self.fcolor = Token.fg_colors[Token.fc]
                 Token.fc = (Token.fc + 1) % len(Token.fg_colors)
 
-
         elif color_opt == COLOR_OPTS[2]:
             """ try-match : If found use same color, but color only the tokens seen at least before """
             found = False
@@ -621,19 +632,13 @@ class Token:
                     if t.fcolor:
                         self.fcolor = t.fcolor
                     else:
-                        self.fcolor = Token.fg_colors[Token.fc]     # new color for both New and Old
+                        self.fcolor = Token.fg_colors[Token.fc]     # new color for both New...
+                        t.fcolor = self.fcolor                      # ...and Old
                         Token.fc = (Token.fc + 1) % len(Token.fg_colors)
 
             if not found:
                 self.fcolor = ''
 
-
-        ##### Smart decoding
-
-        key = smart_decode(self.tuple[0])
-        value = smart_decode(self.tuple[1])
-
-        self.tuple = (key, value)
         array.append(self)
 
 
@@ -663,11 +668,13 @@ def smart_decode(string):
             transformation_chain += 'url '
             did_transformation = True
 
+
         if 'yes' in is_b64encoded(string):                          # 3. Base 64
             string = base64decode(string)
             transformation_chain += 'b64 '
             did_transformation = True
-            #string = termcolor.colored(string, 'on_green') if True else string
+            if color_opt!=COLOR_OPTS[0]:
+                string = termcolor.colored(string, attrs=['underline'])
 
         if did_transformation == False:
             break
