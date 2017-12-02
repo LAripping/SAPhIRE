@@ -129,7 +129,9 @@ First manually carry out the flow (assumed Chrome): Open Dev Tools -> `Network` 
 
 - [ ] Prepare Release:
 
-      * Installation directives (`pip install -r requirements` if any external modules)
+      * Installation directives 
+        * `pip install -r requirements` if any external modules
+        * write functions of termcolor I used in separate file and eliminate external dependancies (since that's the only one!), after-all I already have one termcolor-related but not included
 
 
       * Write a Use Case section with a flow that is revealed. Must highlight most of:
