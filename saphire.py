@@ -151,12 +151,7 @@ def recognize_tokens():
                 h['value']= h['value']
                 if h['name'] in common_headers:
                     continue
-                if h['name'] == 'set-cookie':
-                    cookie_name  = h['value'].split('=')[0]         # set-cookie: remember_user_token=BAhbB1sGaQMhewFJI;
-                    cookie_value = h['value'].split('=')[1].split(';')[0]
-                    t = Token('set_cookie', e['saphireTime'], (cookie_name,cookie_value))
-                else:
-                    t = Token('rsp_header', e['saphireTime'], (h['name'],h['value']) )
+                t = Token('rsp_header', e['saphireTime'], (h['name'],h['value']) )
                 t.match_and_insert(tokens)
                 recognized += 1
         except KeyError:
@@ -178,12 +173,22 @@ def recognize_tokens():
             pass
 
 
+        try:
+            ###### resp cookies
+            for c in e['response']['cookies']:
+                t = Token('set_cookie', e['saphireTime'], (c['name'], c['value']))
+                t.match_and_insert(tokens)
+                recognized += 1
+        except KeyError:
+            pass
+
+
 
             ###### html element
             # TODO scrape <input type=hidden value> from responses
 
-            if debug:
-                print '[+] Recognized '+str(recognized)+' tokens in req with saphireTime '+str(e['saphireTime'])
+        if debug:
+            print '[+] Recognized '+str(recognized)+' tokens in req with saphireTime '+str(e['saphireTime'])
 
 
     if debug:
@@ -442,11 +447,12 @@ def is_colored(text):
     return False
 
 
-def is_urlencoded(string):
+def is_urlencoded(text):
     """
     Check if a string is urlencoded, by:
     - Decode and compare
-    - Check for code sequences (like %2B)
+    - Look for code sequences (like %2B)
+    - deny If it introduces non-printables characters
 
     :return
         0 < conf < 1
@@ -458,33 +464,77 @@ def is_urlencoded(string):
     """
     conf = 0.0
 
-    if urllib.unquote(string) != string:
+    if urllib.unquote(text) != text:
         conf += 0.5
 
     regex = r"%([a-fA-F0-9]{2})"
-    matches = re.findall(regex, string)
+    matches = re.findall(regex, text)
     if len(matches):
         conf += 0.5
+
+    was_printable = True
+    for c in text:
+        if c not in string.printable:
+            was_printable = True
+    for c in urllib.unquote(text):
+        if c not in string.printable and was_printable:
+            return 0
+
 
     return conf
 
 
-def is_b64encoded(string):
+def is_b64encoded(text):
     """
-    A string is inferred as base64 encoded, if:
-    - The alphabet used (A-Za-z0-9=+-/_) AND
-    - The length is correct (mult. of 4)
+    A string is inferred as base64 encoded, by:
+    - The alphabet used (A-Za-z0-9=+-/_)
+    AND
+    - whether it decodes
+
+    Red flags are: Short- or odd-length'ed strings and strings with more digits than letters
 
     :returns one of
         'no' if it's not a valid b64 code
-        'non-text' if when decoded leads to non-printable chars
         'yes' proceed with decoding and get a nice ascii string
     """
     # TODO all possible variations
-    # instead of 'yes' return the variation inferred from the alphabet used
+    # inferred from the alphabet used
+    #  instead of 'yes' return 'yes '+variation
 
-    # TODO ToLower() ruins it!!!!!
+    if len(text) < 10 or len(text) % 2 == 1:
+        return 'no'
+    if len( [d for d in text if d in string.digits] ) > len( [l for l in text if l in string.letters] ):
+        return 'no'
 
+
+    base64_alphabet = list(string.ascii_letters + string.digits + "=+-/_")
+    for c in text:
+        if c not in base64_alphabet:
+            return 'no'
+
+    try:
+        decoded = base64.b64decode(text)
+    except Exception:
+        return 'no'
+
+    return 'yes'
+
+
+def base64decode(text):
+    """
+    custom implementation to decode using the correct variation, and "normalize" the result
+    :return: a one-lined text, stripped of non-printable chars and whitespace
+    """
+    # TODO pass variation in signature
+    #  with def value, previously inferrred from is_b64encoded()
+
+    decoded = base64.b64decode(text)                                # TODO replace with appropriate decoding call based on variation
+    ret = ''
+    for c in decoded:
+        if (c not in string.printable) or c in (string.whitespace):
+            c='.'
+        ret += c
+    return ret
 
 
 
@@ -580,8 +630,8 @@ class Token:
 
         ##### Smart decoding
 
-        key = self.smart_decode(self.tuple[0])
-        value = self.smart_decode(self.tuple[1])
+        key = smart_decode(self.tuple[0])
+        value = smart_decode(self.tuple[1])
 
         self.tuple = (key, value)
         array.append(self)
@@ -592,34 +642,40 @@ class Token:
 
 
 
-    def smart_decode(self, string):
-        transformation_chain = ''
-        while True:
-            did_transformation = False
-            if is_urlencoded(string):                               # 1. URL encoding
-                string = urllib.unquote(string)
-                transformation_chain += 'url '
-                did_transformation = True
+def smart_decode(string):
+    """
+    Recursively decode and highlight the output on certain cases.
 
-            # if is_htmlencoded(value):                             # 2 HTML encoding TODO
-            #     #value = htmldecode(value)
-            #     transformation_chain += 'html '
-            #     did_transformation = True
+    By the time the tokens' key/value come here the final
+    coloring has been settled and we can procceed with bg "marker"
+        to note b64 / gzip encoding
+    but with the more common ones:
+        not to spam  url / html
 
-            if is_b64encoded(string):                               # 3. Base 64 TODO
-                string = base64.b64decode(string)
-                string = termcolor.colored(string, 'on_green')
-                transformation_chain += 'b64 '
-                did_transformation = True
+    :param string: to be decoded and bg-colored
+    """
+    orig_string = string
+    transformation_chain = ''
+    for i in range(100):
+        did_transformation = False
+        if is_urlencoded(string)==1:                                # 1. URL encoding
+            string = urllib.unquote(string)
+            transformation_chain += 'url '
+            did_transformation = True
 
-                                                                    # 4. Gzip TODO
-            if not did_transformation:
-                break
+        if 'yes' in is_b64encoded(string):                          # 3. Base 64
+            string = base64decode(string)
+            transformation_chain += 'b64 '
+            did_transformation = True
+            #string = termcolor.colored(string, 'on_green') if True else string
 
-        if debug and transformation_chain:
-            print "[+] Applied transformations: %s. Added as: '%s'" % (transformation_chain, string)
+        if did_transformation == False:
+            break
 
-        return string
+    if debug and transformation_chain:
+        print "[+] Applied transformations: %s. '%s' -> '%s'" % (transformation_chain, orig_string, string)
+
+    return string
 
 
 
@@ -657,12 +713,6 @@ def set_saphireTimes():
    #TODO try commented oneliner below if it works"""
    req_resp2 = [ e.update( {"saphireTime":hartime_to_saphire(e["startedDateTime"])} )          for e in req_resp ]
 
-   # req_resp2 = []
-   # for e in req_resp:
-   #     e["saphireTime"] = hartime_to_saphire(e["startedDateTime"])
-   #     req_resp2.append(e)
-   #return req_resp2
-
 
 def sort_list_of_dicts_by_key(list, dictkey):
     return sorted(list, key=lambda d: d[dictkey])
@@ -686,7 +736,7 @@ if __name__ == "__main__":                                          # TODO split
     args = parser.parse_args()
     if args.debug:
         debug = True
-    if args.color:
+    if args.color != None :
         color_opt = COLOR_OPTS[args.color]
     if args.expand:
         xpand = args.expand
