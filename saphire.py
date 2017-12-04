@@ -41,7 +41,7 @@ def isolate_requests(har_file):
                     ".css", ".sass",                                # styles
                     ".img", ".jpg", ".jpeg", ".png", ".svg", ".webp", ".gif", ".bmp", ".ico",
                     ".pdf",                                         # img / doc
-                    ]                                               # media (HTML? TODO)
+                    ]                                               # media
         junk_ext += [ j.upper() for j in junk_ext ]                 # ...and .JPG has been seen
 
 
@@ -183,12 +183,46 @@ def recognize_tokens():
             pass
 
 
+        try:
+            ###### html/js input fields
+            html = e['response']['content']['text']
 
-            ###### html element
-            # TODO scrape <input type=hidden value> from responses
+
+            regex = r"<input[^\/]*type=\\*[\"'](.*?)\\*['\"].*name=\\*['\"](.*?)\\*[\"'].*\/>"
+            matches = re.finditer(regex, html)                      # https://regex101.com/r/a8oRRY/2
+            for matchNum, match in enumerate(matches):
+                matchNum = matchNum + 1
+                if debug:
+                    print("[+] Input-field regex (type->name) found match #{matchNum} on resp. at text[{start}:{end}]: {match}"
+                        .format(matchNum=matchNum, start=match.start(), end=match.end(), match=match.group()) )
+                input_type = match.group(1)
+                input_name = match.group(2)
+                if debug:
+                    print "\tType: %s, Name: %s" % (input_type, input_name)
+                t = Token('html',e['saphireTime'], (input_type, input_name))
+                t.match_and_insert(tokens)
+                recognized += 1
+
+            regex = r"<input[^\/]*name=\\*[\"'](.*?)\\*['\"].*type=\\*['\"](.*?)\\*[\"'].*\/>"
+            for matchNum, match in enumerate(matches):              # now the ones in reverse order
+                matchNum = matchNum + 1
+                if debug:
+                    print("[+] Input-field regex (name->type) found match #{matchNum} on resp. at text[{start}:{end}]: {match}"
+                        .format(matchNum=matchNum, start=match.start(), end=match.end(), match=match.group()) )
+                input_type = match.group(2)
+                input_name = match.group(1)
+                if debug:
+                    print "\tType: %s, Name: %s" % (input_type, input_name)
+                t = Token('html', e['saphireTime'], (input_type, input_name))
+                t.match_and_insert(tokens)
+                recognized += 1
+
+        except KeyError:
+            pass
 
         if debug:
-            print '[+] Recognized '+str(recognized)+' tokens in req with saphireTime '+str(e['saphireTime'])
+            print '[+] Recognized %d tokens in req with saphireTime %0.3f' % (recognized,e['saphireTime'])
+
 
 
     if debug:
@@ -350,7 +384,7 @@ def flow_print():
 
         ##### Request
         fit_print('_'*500, 0, req_thres, True)
-        line =    "%10s|%s (saphireTime:%s)" % ('#'+str(i), e['startedDateTime'][11:22], e['saphireTime'])
+        line =    "%10s|%s (saphireTime:%0.3f)" % ('#'+str(i), e['startedDateTime'][11:22], e['saphireTime'])
         fit_print(line, 0, req_thres)                               
         u = urlparse.urlparse(e['request']['url'])
         line =    "%10s|%s %s" % (e['request']['method'], u.netloc, u.path)
@@ -411,7 +445,11 @@ def flow_print():
 
                         key     = rtc.tuple[0]
                         value   = (rtc.tuple[1][:max_len]+'...') if len(rtc.tuple[1]) > max_len else rtc.tuple[1]
-                        colord_token = "%s=%s" % ( key,value )
+                        colord_token = ''
+                        if t_type == 'html':
+                            colord_token = "<input type=%s name=%s />" % (key, value)
+                        else:
+                            colord_token = "%s=%s" % (key, value)
                         if color_opt!=COLOR_OPTS[0]:
                             if rtc.fcolor:                          # in try-match mode some tokens are not colored!
                                 colord_token = termcolor.colored( colord_token, rtc.fcolor)
@@ -427,7 +465,11 @@ def flow_print():
                             line = "%10s|" % t_type
 
                         rtc = req_tokens_by_type[t_type][j]
-                        colord_token = "%s=%s" % (rtc.tuple[0], rtc.tuple[1])
+                        colord_token = ''
+                        if t_type=='html':
+                            colord_token = "<input type=%s name=%s />" % (rtc.tuple[0], rtc.tuple[1])
+                        else:
+                            colord_token = "%s=%s" % (rtc.tuple[0], rtc.tuple[1])
                         if color_opt != COLOR_OPTS[0]:
                             if rtc.fcolor:                          # in try-match mode some tokens are not colored!
                                 colord_token = termcolor.colored(colord_token, rtc.fcolor)
@@ -495,7 +537,11 @@ def is_b64encoded(text):
     AND
     - whether it decodes
 
-    Red flags are: Short- or odd-length'ed strings and strings with more digits than letters
+    Red flags are:
+    - Short- or odd-length'ed strings
+    - Strings with more digits than letters
+    - Strings with not-low frequency of symbols
+    (biggest index => require most aces in bytes => most rare in plaintext)
 
     :returns one of
         'no' if it's not a valid b64 code
@@ -505,9 +551,15 @@ def is_b64encoded(text):
     # inferred from the alphabet used
     #  instead of 'yes' return 'yes '+variation
 
+    # TODO test and incorporate
+    # https://blog.nviso.be/2017/08/30/decoding-malware-via-simple-statistical-analysis/
+    # https://blog.didierstevens.com/2017/08/12/update-byte-stats-py-version-0-0-6/
+
     if len(text) < 10 or len(text) % 2 == 1:
         return 'no'
     if len( [d for d in text if d in string.digits] ) > len( [l for l in text if l in string.letters] ):
+        return 'no'
+    if float( len( [d for d in text if d in list("=+-/_")] ) ) > 3.0/100.0 * float( len( [l for l in text if l in string.letters] ) ):
         return 'no'
 
 
@@ -701,19 +753,19 @@ def hartime_to_saphire(time_string):
     > time_struct = time.strptime( time_string.split('.')[0], "%Y-%m-%dT%H:%M:%S")
     time.struct_time(tm_year=2017, tm_mon=11, tm_mday=28, tm_hour=20, tm_min=14, tm_sec=53, tm_wday=1, tm_yday=332, tm_isdst=-1)
 
-    > timestamp = time.mktime(time_struct)
-    1511892893.0
+    > timestamp = str( time.mktime(time_struct) ).split('.')[0]
+    1511892893
 
-    > mili = float( '.'+time_string.split('.')[1].split('Z')[0] )
-    0.852
+    > mili = time_string.split('.')[1].split('Z')[0]
+    852
 
-    > timestamp+mili
+    > float(timestamp+'.'+mili)
     1511892893.852
     """
     time_struct = time.strptime( time_string.split('.')[0], "%Y-%m-%dT%H:%M:%S")
-    timestamp = time.mktime(time_struct)
-    mili = float( '.'+time_string.split('.')[1].split('Z')[0] )
-    return timestamp+mili
+    timestamp = str(time.mktime(time_struct)).split('.')[0]
+    mili = time_string.split('.')[1].split('Z')[0]
+    return float(timestamp+'.'+mili)
 
 
 def set_saphireTimes():
