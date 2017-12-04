@@ -129,6 +129,9 @@ First manually carry out the flow (assumed Chrome): Open Dev Tools -> `Network` 
 
 - [ ] Prepare Release:
 
+      * update asciinema
+
+
       * Installation directives 
         * `pip install -r requirements` if any external modules
         * write functions of termcolor I used in separate file and eliminate external dependancies (since that's the only one!), after-all I already have one termcolor-related but not included
@@ -136,6 +139,8 @@ First manually carry out the flow (assumed Chrome): Open Dev Tools -> `Network` 
 
       * Write a Use Case section with a flow that is revealed. Must highlight most of:
         * smart decoding 
+          * ratpack has [url url] transformation to show recursive
+          * akispetre has [url b64 no-url]
         * tokens leading to curl- ing
 
       * "Fuzz" cmd line parameters and inputs as manual testing
@@ -154,6 +159,7 @@ First manually carry out the flow (assumed Chrome): Open Dev Tools -> `Network` 
 
 ## Gotchas
 * UTF8 will probably result in sth ugly...
+* `<input` regex (for tokens of type:`html`) is not perfect, it will miss some, misinterpret other ones, and should not be trusted 100%. It's generally recommended to use an html parser, but my way runs on javascript files too and that's the tool's value! ...and there no parser could ever strip it automatically...
 
 
 
