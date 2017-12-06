@@ -527,6 +527,7 @@ def is_b64encoded(text):
     - Strings with more digits than letters
     - Strings with not-low frequency of symbols
     (biggest index => require most aces in bytes => most rare in plaintext)
+    - Only hex chars (chars same case and less than f)
 
     :returns one of
         'no' if it's not a valid b64 code
@@ -545,6 +546,9 @@ def is_b64encoded(text):
     if len( [d for d in text if d in string.digits] ) > len( [l for l in text if l in string.letters] ):
         return 'no'
     if float( len( [d for d in text if d in list("=+-/_")] ) ) > 20.0/100.0 * float( len(text) ):
+        return 'no'
+    if ( text.isupper() or text.islower() ) and len( [c for c in text if c not in string.hexdigits+"=+-/_"] )==0:
+        # effectively: not .ismixed()       and          all chars in hexdigits+symbols
         return 'no'
 
 
