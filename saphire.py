@@ -10,6 +10,7 @@ import string
 import re
 import argparse
 import time
+import bs4
 #TODO that pip install -r requirements.txt trick
 
 
@@ -184,39 +185,22 @@ def recognize_tokens():
 
 
         try:
-            ###### html/js input fields
-            html = e['response']['content']['text']
-
-
-            regex = r"<input[^\/]*type=\\*[\"'](.*?)\\*['\"].*name=\\*['\"](.*?)\\*[\"'].*\/>"
-            matches = re.finditer(regex, html)                      # https://regex101.com/r/a8oRRY/2
-            for matchNum, match in enumerate(matches):
-                matchNum = matchNum + 1
-                if debug:
-                    print("[+] Input-field regex (type->name) found match #{matchNum} on resp. at text[{start}:{end}]: {match}"
-                        .format(matchNum=matchNum, start=match.start(), end=match.end(), match=match.group()) )
-                input_type = match.group(1)
-                input_name = match.group(2)
-                if debug:
-                    print "\tType: %s, Name: %s" % (input_type, input_name)
-                t = Token('html',e['saphireTime'], (input_type, input_name))
-                t.match_and_insert(tokens)
-                recognized += 1
-
-            regex = r"<input[^\/]*name=\\*[\"'](.*?)\\*['\"].*type=\\*['\"](.*?)\\*[\"'].*\/>"
-            for matchNum, match in enumerate(matches):              # now the ones in reverse order
-                matchNum = matchNum + 1
-                if debug:
-                    print("[+] Input-field regex (name->type) found match #{matchNum} on resp. at text[{start}:{end}]: {match}"
-                        .format(matchNum=matchNum, start=match.start(), end=match.end(), match=match.group()) )
-                input_type = match.group(2)
-                input_name = match.group(1)
-                if debug:
-                    print "\tType: %s, Name: %s" % (input_type, input_name)
-                t = Token('html', e['saphireTime'], (input_type, input_name))
-                t.match_and_insert(tokens)
-                recognized += 1
-
+            ###### html input fields
+            if 'text/html'== e['response']['content']['mimeType']:  # this also appears on XHTML
+                html = e['response']['content']['text']
+                soup = bs4.BeautifulSoup(html, 'html.parser')
+                for form_input in  soup.find_all('input'):
+                    input_type = form_input.attrs['type']
+                    input_name = form_input.attrs['name']
+                    input_id = ''
+                    try:                                            # 'id' scraping optional
+                        input_id = form_input.attrs['id']
+                    except KeyError:
+                        pass
+                    tuple = (input_type,input_name,input_id) if input_id else (input_type, input_name)
+                    t = Token('html', e['saphireTime'], tuple)
+                    t.match_and_insert(tokens)
+                    recognized += 1
         except KeyError:
             pass
 
@@ -447,7 +431,7 @@ def flow_print():
                         value   = (rtc.tuple[1][:max_len]+'...') if len(rtc.tuple[1]) > max_len else rtc.tuple[1]
                         colord_token = ''
                         if t_type == 'html':
-                            colord_token = "<input type=%s name=%s />" % (key, value)
+                            colord_token = "<input type=%s name=%s %s/>" % (key, value, ( "id="+rtc.tuple[2] ) if len(rtc.tuple)==3 else '' )
                         else:
                             colord_token = "%s=%s" % (key, value)
                         if color_opt!=COLOR_OPTS[0]:
@@ -467,7 +451,8 @@ def flow_print():
                         rtc = req_tokens_by_type[t_type][j]
                         colord_token = ''
                         if t_type=='html':
-                            colord_token = "<input type=%s name=%s />" % (rtc.tuple[0], rtc.tuple[1])
+                            colord_token = "<input type=%s name=%s %s/>" \
+                                           % (rtc.tuple[0], rtc.tuple[1], ( "id="+rtc.tuple[2] ) if len(rtc.tuple)==3 else '' )
                         else:
                             colord_token = "%s=%s" % (rtc.tuple[0], rtc.tuple[1])
                         if color_opt != COLOR_OPTS[0]:
@@ -656,7 +641,7 @@ class Token:
         key = smart_decode(self.tuple[0])
         value = smart_decode(self.tuple[1])
 
-        self.tuple = (key, value)
+        self.tuple = (key, value) if len(self.tuple)==2 else (key, value, self.tuple[2])
 
 
         ##### Match Coloring
