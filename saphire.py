@@ -544,7 +544,7 @@ def is_b64encoded(text):
         return 'no'
     if len( [d for d in text if d in string.digits] ) > len( [l for l in text if l in string.letters] ):
         return 'no'
-    if float( len( [d for d in text if d in list("=+-/_")] ) ) > 3.0/100.0 * float( len( [l for l in text if l in string.letters] ) ):
+    if float( len( [d for d in text if d in list("=+-/_")] ) ) > 20.0/100.0 * float( len(text) ):
         return 'no'
 
 
