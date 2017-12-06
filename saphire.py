@@ -660,36 +660,36 @@ class Token:
 
 
         ##### Match Coloring
+        if self.type != 'html':                                     # Don't color 'html' <input fields
+            if color_opt == COLOR_OPTS[3]:
+                """ try-match-all : If found use same color, but all new tokens get colored"""
+                found = False
 
-        if color_opt == COLOR_OPTS[3]:
-            """ try-match-all : If found use same color, but all new tokens get colored"""
-            found = False
-
-            for t in array:
-                if self.tuple[1] == t.tuple[1]:
-                    self.fcolor = t.fcolor
-                    found = True
-    
-            if not found:
-                self.fcolor = Token.fg_colors[Token.fc]
-                Token.fc = (Token.fc + 1) % len(Token.fg_colors)
-
-        elif color_opt == COLOR_OPTS[2]:
-            """ try-match : If found use same color, but color only the tokens seen at least before """
-            found = False
-
-            for t in array:
-                if self.tuple[1] == t.tuple[1]:
-                    found = True
-                    if t.fcolor:
+                for t in array:
+                    if self.tuple[1] == t.tuple[1]:
                         self.fcolor = t.fcolor
-                    else:
-                        self.fcolor = Token.fg_colors[Token.fc]     # new color for both New...
-                        t.fcolor = self.fcolor                      # ...and Old
-                        Token.fc = (Token.fc + 1) % len(Token.fg_colors)
+                        found = True
 
-            if not found:
-                self.fcolor = ''
+                if not found:
+                    self.fcolor = Token.fg_colors[Token.fc]
+                    Token.fc = (Token.fc + 1) % len(Token.fg_colors)
+
+            elif color_opt == COLOR_OPTS[2]:
+                """ try-match : If found use same color, but color only the tokens seen at least before """
+                found = False
+
+                for t in array:
+                    if self.tuple[1] == t.tuple[1]:
+                        found = True
+                        if t.fcolor:
+                            self.fcolor = t.fcolor
+                        else:
+                            self.fcolor = Token.fg_colors[Token.fc]     # new color for both New...
+                            t.fcolor = self.fcolor                      # ...and Old
+                            Token.fc = (Token.fc + 1) % len(Token.fg_colors)
+
+                if not found:
+                    self.fcolor = ''
 
         array.append(self)
 
