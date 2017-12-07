@@ -118,11 +118,19 @@ First manually carry out the flow (assumed Chrome): Open Dev Tools -> `Network` 
 ## TODOs
 
 - [x] Flow-print with colors
+
 - [ ] smart decoding: url / html / ~~base64~~ / ~~gzip~~ 
+
 - [x] tokens from: scraping  `<input type=hidden value>` from html
+
 - [ ] ignore junk tokens (like locale, encoding, lang)
+
 - [ ] Flow-graph w. GUI lib ( `matplotlib` / `pyqt` / ... ?)
+
 - [ ] Prepare Release:
+
+      * Option to disbale smartdecoding (mostly for showoff)
+
 
       * update asciinema
       * Installation directives 
@@ -130,23 +138,22 @@ First manually carry out the flow (assumed Chrome): Open Dev Tools -> `Network` 
         * write functions of termcolor I used in separate file and eliminate external dependancies (since that's the only one!), after-all I already have one termcolor-related but not included
       * Write a Use Case section with a flow that is revealed. Must highlight most of:
         * smart decoding 
-          * ratpack has [url url] transformation to show recursive
-          * akispetre has [url b64 no-url]
+          * [ratpack.gr.har]() has [url url] transformation to show recursive
+          * and [akispetretzikis.com.har]() has [url b64 no-url]
+          * [akispetretzikis.com.har]() demonstrates the no-b64 decoded strings (`x-request-id`)
+          * [skroutz.gr.har]() demonstrates the utf8 functionality (greek chars `Σύγκριση τιμών`)
         * tokens leading to curl- ing
       * "Fuzz" cmd line parameters and inputs as manual testing
       * explain common-headers trick
       * explain why smart decoding can't work:
         * When to stop? -> When is it a valid word? 
         * Arbitrary schemes could be used, prefer manual (out of the "low-hanging fruit" mentality of the tool)
+
 - [ ] research common tokens `_ga` `_gat` `_gid` (in cookies)
+
 - [ ] curl generator! `-g / --curl ` option that will ask for Req# (accepting ranges like PDF pages) in the subset of ones left *after filtering/ignoring* and output `$ curl` commands  (like Burp)
 
 
-
-
-## Gotchas
-* UTF8 will probably result in sth ugly...
-* `<input` regex (for tokens of type:`html`) is not perfect, it will miss some, misinterpret other ones, and should not be trusted 100%. It's generally recommended to use an html parser, but my way runs on javascript files too and that's the tool's value! ...and there no parser could ever strip it automatically...
 
 
 
