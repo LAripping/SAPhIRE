@@ -23,22 +23,22 @@ It Isolates "tokens" like
 
 ## Selling Points
 
-- [x] **Auto-decodes tokens** (html/url) to spare the reverser of these easy but tiring chores
+- [x] **Auto-decodes tokens** (html/url/base64) to spare the reverser of these easy but tiring chores
 - [x] **Ignores standard tokens** like [common Headers](/common_headers.txt) (e.g.  `Accept` / `Content-type` ) headers or `?encoding=utf-8` params.
 - [x] **Filters out irrelevant requests && Ignores media/junk/...** with prompts at runtime.
 
 
-- [x] **Highlights common tokens** with common colors : The ones repeated throughout the (massive) flows
+- [x] **Highlights common tokens** with common colors : The ones *repeated* throughout the (massive) flows
 
-      Although in a manual examination, a trained eye will see the business logic being implemented, the volume of data is sometimes too much for a human to connect the dots
+Although in a manual examination, a trained eye will see the business logic being implemented, the volume of data is sometimes too much for a human to connect the dots
 
-      *Bonus: Configurable colors*
+*Bonus: Configurable colors*
 
 - [x] **Extracts the flow from the browser**: in HAR files, see Usage below.
 
-      No need for MITM proxies / network sniffing to capture the flow. 
+No need for MITM proxies / network sniffing to capture the flow. 
 
-      No more certificate installing, pinning-bypasses.
+No more certificate installing, pinning-bypasses.
 
 
 
@@ -46,19 +46,24 @@ It Isolates "tokens" like
 
 First manually carry out the flow (assumed Chrome): Open Dev Tools -> `Network` -> Check `Preserve Log`, clear it and... -> ( do the flow ) -> Right click -> `Save as HAR with content`. Then:
 
-<a href="https://asciinema.org/a/WNwagDpjbWv0DS8o0GIpEmEsc?autoplay=1" target="_blank"><img src="https://asciinema.org/a/ykIH6IrDNe7V1lXMdfcUv3dQh.png" /></a>
+<a href="https://asciinema.org/a/YxEnyseHyMsXYtkoxtd3UJfBv?autoplay=1" target="_blank"><img src="https://asciinema.org/a/lFzXW6qZ75zqrV3ccxRH4v0nF.png" /></a>
 
 
 
 ### Options
 `-c, --color` Determines the way the tokens will be colored (meaningful only in flow_print mode) Possible Values:
+
+
+
 0. ` off` no funky colors and stuff
 
 1. `by-type` rather dumb, fuzz around the colors for each type, no affiliation
 
-2. `try-match` *the suggested and default mode*, Color every token that occurs more than once, all-occurancies with the same color!
+2. `try-match` *the suggested and default mode*, Color every token that occurs more than once, all-occurrences with the same color!
 
 3. `try-match-all` can't live without colors? Color every token and same ones get the same color.
+
+   ​
 
    ​
 
@@ -119,7 +124,7 @@ First manually carry out the flow (assumed Chrome): Open Dev Tools -> `Network` 
 
 - [x] Flow-print with colors
 
-- [ ] smart decoding: url / html / ~~base64~~ / ~~gzip~~ 
+- [ ] smart decoding: url / html / ~~base64~~ / ~~gzip~~ / jwt (gameboard.har -> session cookie, then pass in `resp` dict-generator)
 
 - [x] tokens from: scraping  `<input type=hidden value>` from html
 
@@ -129,25 +134,23 @@ First manually carry out the flow (assumed Chrome): Open Dev Tools -> `Network` 
 
 - [ ] Prepare Release:
 
-      * Option to disbale smartdecoding (mostly for showoff)
-
-
-      * update asciinema
-      * Installation directives 
-        * `pip install -r requirements` if any external modules
-        * write functions of termcolor I used in separate file and eliminate external dependancies (since that's the only one!), after-all I already have one termcolor-related but not included
-      * Write a Use Case section with a flow that is revealed. Must highlight most of:
-        * smart decoding 
-          * [ratpack.gr.har]() has [url url] transformation to show recursive
-          * and [akispetretzikis.com.har]() has [url b64 no-url]
-          * [akispetretzikis.com.har]() demonstrates the no-b64 decoded strings (`x-request-id`)
-          * [skroutz.gr.har]() demonstrates the utf8 functionality (greek chars `Σύγκριση τιμών`)
-        * tokens leading to curl- ing
-      * "Fuzz" cmd line parameters and inputs as manual testing
-      * explain common-headers trick
-      * explain why smart decoding can't work:
-        * When to stop? -> When is it a valid word? 
-        * Arbitrary schemes could be used, prefer manual (out of the "low-hanging fruit" mentality of the tool)
+* Option to disbale smartdecoding (mostly for showoff)
+* update asciinema
+* Installation directives 
+  * `pip install -r requirements` if any external modules
+  * write functions of termcolor I used in separate file and eliminate external dependancies (since that's the only one!), after-all I already have one termcolor-related but not included
+* Write a Use Case section with a flow that is revealed. Must highlight most of:
+  * smart decoding 
+    * [ratpack.gr.har]() has [url url] transformation to show recursive
+    * and [akispetretzikis.com.har]() has [url b64 no-url]
+    * [akispetretzikis.com.har]() demonstrates the no-b64 decoded strings (`x-request-id`)
+    * [skroutz.gr.har]() demonstrates the utf8 functionality (greek chars `Σύγκριση τιμών`)
+  * tokens leading to curl- ing
+* "Fuzz" cmd line parameters and inputs as manual testing
+* explain common-headers trick
+* explain why smart decoding can't work:
+  * When to stop? -> When is it a valid word? 
+  * Arbitrary schemes could be used, prefer manual (out of the "low-hanging fruit" mentality of the tool)
 
 - [ ] research common tokens `_ga` `_gat` `_gid` (in cookies)
 
