@@ -1,4 +1,6 @@
 #!/usr/bin/python
+#encoding=utf8
+
 import base64
 import sys
 import json
@@ -11,7 +13,9 @@ import re
 import argparse
 import time
 import bs4
+import unicodedata
 #TODO that pip install -r requirements.txt trick
+
 
 
 def isolate_requests(har_file):
@@ -220,8 +224,15 @@ def recognize_tokens():
 
 
 
-def make_printable(text):
-    """strip non-printable chars, but keep the color ones"""
+UNICODE_NONPRINTABLE_CATEGORIES = [ 'Zl', 'Zp', 'Cc', 'Cf', 'Cs','Co','Cn' ]
+# we consider terminal-safe all unicode categories except Control Chars. and Separators
+#   Space Separators (Zs) are accepted by convention
+# https://www.unicode.org/reports/tr44/#General_Category_Values
+
+def make_term_safe(text):
+    """
+    Eliminate termcolor.sequences split in half because of length restrictions
+    """
     ret = ''
     i = 0
     while i < len(text):
@@ -237,8 +248,12 @@ def make_printable(text):
                     ret += text[i:i+4]
                     i += 3
                 else:
-                    ret += ''
-                    i += 2
+                    cat = unicodedata.category(text[i])
+                    if cat in UNICODE_NONPRINTABLE_CATEGORIES:
+                        ret += ''
+                        i += 1
+                    else:
+                        ret += text[i]
             except IndexError:
                 ret += ''
                 return ret
@@ -295,7 +310,7 @@ def fit_print(line, offset, threshold, first_last=False):
                 if i==threshold_w_nonp-1:                           
                     print_line += ' |'                              # 3. Clip
                     break
-        print make_printable(termcolor.RESET+print_line)
+        print make_term_safe(termcolor.RESET + print_line)
 
 
     else:
@@ -317,7 +332,7 @@ def fit_print(line, offset, threshold, first_last=False):
                 if i==threshold_w_nonp-1:
                     print_line += ' |'
                     break
-        print make_printable(termcolor.RESET+print_line)            # 5. Catch color-leak from prev line
+        print make_term_safe(termcolor.RESET + print_line)            # 5. Catch color-leak from prev line
 
 
 
@@ -478,39 +493,54 @@ def is_colored(text):
     return False
 
 
+def urldecode(text):
+    """
+    Custom unquote implementation to go through str() and back to unicode() ...if we can
+
+    This is made because python escapes some strings when it auto-imports them to unicode,
+    so unquote() can't do it's jobs correctly. Work on strings here, and return a unicode to the rest of the code
+
+    Excellent piece of advice to keep in mind: "The Unicode Sandwich" (although I do the reverse here!)
+    from https://stackoverflow.com/a/35444608
+
+    str ->  Read ->  utf8
+            Work
+    utf8 -> Print -> str
+    """
+    try:
+        return urllib.unquote( str(text) ).decode('utf-8')
+    except UnicodeEncodeError:
+        return text
+    except UnicodeDecodeError:
+        return text
+
+
 def is_urlencoded(text):
     """
     Check if a string is urlencoded, by:
     - Decode and compare
     - Look for code sequences (like %2B)
-    - deny If it introduces non-printables characters
 
     :return
         0 < conf < 1
 
     Use as
         while is_urlencoded(string):
-            string = urllib.unquote(string)
+            string = urldecode(string)
 
     """
     conf = 0.0
 
-    if urllib.unquote(text) != text:
-        conf += 0.5
+    try:
+        if urldecode(text) != text:
+            conf += 0.5
+    except UnicodeWarning:
+        pass
 
     regex = r"%([a-fA-F0-9]{2})"
     matches = re.findall(regex, text)
     if len(matches):
         conf += 0.5
-
-    was_printable = True
-    for c in text:
-        if c not in string.printable:
-            was_printable = True
-    for c in urllib.unquote(text):
-        if c not in string.printable and was_printable:
-            return 0
-
 
     return conf
 
@@ -575,10 +605,12 @@ def base64decode(text):
 
     decoded = base64.b64decode(text)                                # TODO replace with appropriate decoding call based on variation
     ret = ''
-    for c in decoded:
-        if (c not in string.printable) or c in (string.whitespace):
-            c='.'
-        ret += c
+    for c in unicode(decoded, 'utf-8', 'ignore'):
+        if unicodedata.category(c) in UNICODE_NONPRINTABLE_CATEGORIES:
+            ret += '.'
+        else:
+            ret += c
+
     return ret
 
 
@@ -705,7 +737,7 @@ def smart_decode(string):
     for i in range(100):
         did_transformation = False
         if is_urlencoded(string)==1:                                # 1. URL encoding
-            string = urllib.unquote(string)
+            string = urldecode(string)
             transformation_chain += 'url '
             did_transformation = True
 
@@ -721,7 +753,10 @@ def smart_decode(string):
             break
 
     if debug and transformation_chain:
-        print "[+] Applied transformations: %s. '%s' -> '%s'" % (transformation_chain, orig_string, string)
+        try:
+            print "[+] Applied transformations: %s. '%s' -> '%s'" % (transformation_chain, orig_string, string)
+        except UnicodeDecodeError:
+            pass
 
     return string
 
