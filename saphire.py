@@ -162,6 +162,7 @@ def recognize_tokens():
         except KeyError:
             pass
 
+        """
         try:
             ###### resp body
             if 'application/json' in [ h['value'] for h in e['response']['headers']]:
@@ -176,7 +177,7 @@ def recognize_tokens():
                     recognized += 1
         except KeyError:
             pass
-
+        """
 
         try:
             ###### resp cookies
