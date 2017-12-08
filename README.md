@@ -42,6 +42,22 @@ No more certificate installing, pinning-bypasses.
 
 
 
+
+
+## Installation
+
+```bash
+git clone https://github.com/LAripping/SAPhIRE && cd SAPhIRE/
+sudo pip install virtualenv
+virtualenv saphvenv
+source saphvenv/bin/activate
+pip install requirements.txt
+```
+
+
+
+
+
 ## Usage
 
 First manually carry out the flow (assumed Chrome): Open Dev Tools -> `Network` -> Check `Preserve Log`, clear it and... -> ( do the flow ) -> Right click -> `Save as HAR with content`. Then:
@@ -122,23 +138,25 @@ First manually carry out the flow (assumed Chrome): Open Dev Tools -> `Network` 
 
 ## TODOs
 
+- [x] 
+- [x] 
+- [x] 
+- [x] 
+- [x] 
+- [x] 
 - [x] Flow-print with colors
-
+- [ ] migrate TODOs on Issues, with colored labels (red `BUG`, green `FEATURE-minor` :complete  half made ones, blue `FEATURE-major` :write from scratch) and leave a link to [Issues]() in the TODOs section
+- [ ] ~~'resp'~~ json type tokens from html body responses. strings/list elements will get key='', dicts will get key:value
 - [ ] smart decoding: url / html / ~~base64~~ / ~~gzip~~ / jwt (gameboard.har -> session cookie, then pass in `resp` dict-generator)
-
-- [x] tokens from: scraping  `<input type=hidden value>` from html
-
-- [ ] ignore junk tokens (like locale, encoding, lang)
-
+- [x] tokens from: scraping  `<input type=hidden value>` from html. Resarch if we can do anythin with js ones (resurgence of the regex?)
+- [ ] Inteligent scanning:
+      * ignore junk tokens (like locale, encoding, lang)
+      * auto-focus (bg-color?) on hot words (here's another option for the conf.file) like "login", "sign*", "password", "token", "session"...  = separate color option to black everything out and bg-highight these?
 - [ ] Flow-graph w. GUI lib ( `matplotlib` / `pyqt` / ... ?)
-
+      - [ ] If no GUI: Support for fine-grained input  from the user:
+            * json conf file with standard options available, for more control over domain filters, tokens to ignore  since recognized as junk/useless, regexes (r'..') or bash-like (*?)
 - [ ] Prepare Release:
 
-* Option to disbale smartdecoding (mostly for showoff)
-* update asciinema
-* Installation directives 
-  * `pip install -r requirements` if any external modules
-  * write functions of termcolor I used in separate file and eliminate external dependancies (since that's the only one!), after-all I already have one termcolor-related but not included
 * Write a Use Case section with a flow that is revealed. Must highlight most of:
   * smart decoding 
     * [ratpack.gr.har]() has [url url] transformation to show recursive
@@ -146,11 +164,9 @@ First manually carry out the flow (assumed Chrome): Open Dev Tools -> `Network` 
     * [akispetretzikis.com.har]() demonstrates the no-b64 decoded strings (`x-request-id`)
     * [skroutz.gr.har]() demonstrates the utf8 functionality (greek chars `Σύγκριση τιμών`)
   * tokens leading to curl- ing
-* "Fuzz" cmd line parameters and inputs as manual testing
-* explain common-headers trick
-* explain why smart decoding can't work:
-  * When to stop? -> When is it a valid word? 
-  * Arbitrary schemes could be used, prefer manual (out of the "low-hanging fruit" mentality of the tool)
+  * **Web CTFs** find a case, solve it with saphire, make sciinema, add section in README
+
+  ​
 
 - [ ] research common tokens `_ga` `_gat` `_gid` (in cookies)
 

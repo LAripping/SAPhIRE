@@ -14,8 +14,6 @@ import argparse
 import time
 import bs4
 import unicodedata
-#TODO that pip install -r requirements.txt trick
-
 
 
 def isolate_requests(har_file):
