@@ -138,20 +138,10 @@ First manually carry out the flow (assumed Chrome): Open Dev Tools -> `Network` 
 
 ## TODOs
 
-- [x] 
-- [x] 
-- [x] 
-- [x] 
-- [x] 
-- [x] 
 - [x] Flow-print with colors
 - [ ] migrate TODOs on Issues, with colored labels (red `BUG`, green `FEATURE-minor` :complete  half made ones, blue `FEATURE-major` :write from scratch) and leave a link to [Issues]() in the TODOs section
-- [ ] ~~'resp'~~ json type tokens from html body responses. strings/list elements will get key='', dicts will get key:value
 - [ ] smart decoding: url / html / ~~base64~~ / ~~gzip~~ / jwt (gameboard.har -> session cookie, then pass in `resp` dict-generator)
 - [x] tokens from: scraping  `<input type=hidden value>` from html. Resarch if we can do anythin with js ones (resurgence of the regex?)
-- [ ] Inteligent scanning:
-      * ignore junk tokens (like locale, encoding, lang)
-      * auto-focus (bg-color?) on hot words (here's another option for the conf.file) like "login", "sign*", "password", "token", "session"...  = separate color option to black everything out and bg-highight these?
 - [ ] Flow-graph w. GUI lib ( `matplotlib` / `pyqt` / ... ?)
       - [ ] If no GUI: Support for fine-grained input  from the user:
             * json conf file with standard options available, for more control over domain filters, tokens to ignore  since recognized as junk/useless, regexes (r'..') or bash-like (*?)
@@ -166,11 +156,10 @@ First manually carry out the flow (assumed Chrome): Open Dev Tools -> `Network` 
   * tokens leading to curl- ing
   * **Web CTFs** find a case, solve it with saphire, make sciinema, add section in README
 
-  ​
-
 - [ ] research common tokens `_ga` `_gat` `_gid` (in cookies)
 
-- [ ] curl generator! `-g / --curl ` option that will ask for Req# (accepting ranges like PDF pages) in the subset of ones left *after filtering/ignoring* and output `$ curl` commands  (like Burp)
+      ​
+
 
 
 

@@ -526,7 +526,6 @@ def is_urlencoded(text):
     Use as
         while is_urlencoded(string):
             string = urldecode(string)
-
     """
     conf = 0.0
 
@@ -565,10 +564,6 @@ def is_b64encoded(text):
     # TODO all possible variations
     # inferred from the alphabet used
     #  instead of 'yes' return 'yes '+variation
-
-    # TODO test and incorporate
-    # https://blog.nviso.be/2017/08/30/decoding-malware-via-simple-statistical-analysis/
-    # https://blog.didierstevens.com/2017/08/12/update-byte-stats-py-version-0-0-6/
 
     if len(text) < 10 or len(text) % 2 == 1:
         return 'no'
@@ -621,6 +616,7 @@ common_headers = []
 req_resp = []
 tokens = []
 debug = False
+smart_decoding = True
 
 COLOR_OPTS=['off','by-type','try-match','try-match-all']
 color_opt = COLOR_OPTS[2]
@@ -673,8 +669,8 @@ class Token:
 
         ##### Smart decoding
 
-        key = smart_decode(self.tuple[0])
-        value = smart_decode(self.tuple[1])
+        key =   smart_decode(self.tuple[0]) if smart_decoding else self.tuple[0]
+        value = smart_decode(self.tuple[1]) if smart_decoding else self.tuple[1]
 
         self.tuple = (key, value) if len(self.tuple)==2 else (key, value, self.tuple[2])
 
@@ -792,7 +788,6 @@ def hartime_to_saphire(time_string):
 
 
 def set_saphireTimes():
-   #TODO try commented oneliner below if it works"""
    req_resp2 = [ e.update( {"saphireTime":hartime_to_saphire(e["startedDateTime"])} )          for e in req_resp ]
 
 
@@ -806,13 +801,14 @@ def sort_list_of_dicts_by_key(list, dictkey):
 ####### MAIN
 
 if __name__ == "__main__":                                          # TODO split files (Token, saphire.py, utils)
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="...a Smart API Reverse Enginneering Helper", epilog="See README for more on the options provided here")
     parser.add_argument("harfile", help="the recorded .har flow to analyze")
     parser.add_argument("-d", "--debug", help="fine-tune settings and get more verbose output", action="store_true")
     parser.add_argument("-c", "--color", type=int, choices=[0, 1, 2, 3],
-                        help="color setting: 0=Off, 1=by-type, 2=try-match, 3=try-match-all. See README for more")
+                        help="color setting: 0=Off, 1=by-type, 2=try-match, 3=try-match-all.")
     parser.add_argument("-x","--expand", choices=['h','v'],
                         help="dimension to expand the list of tokens per-category: h=Horizontally, v=Vertically. See README for more")
+    parser.add_argument("-s", "--nosmart", help="turnoff smart decoding", action="store_true")
 
 
     args = parser.parse_args()
@@ -822,10 +818,12 @@ if __name__ == "__main__":                                          # TODO split
         color_opt = COLOR_OPTS[args.color]
     if args.expand:
         xpand = args.expand
+    if args.nosmart:
+        smart_decoding = False
 
     isolate_requests( args.harfile )
     set_saphireTimes()                                   # make new field with unique timestamp
-    req_resp = sort_list_of_dicts_by_key(req_resp,'saphireTime')    # TODO arg=key in the req{} . Our custom time added in the step above
+    req_resp = sort_list_of_dicts_by_key(req_resp,'saphireTime')
     recognize_tokens()
 
     graph = False                                                   # TODO make cmdline switch --flow-print vs --flow-graph (mutually_exclusive)
