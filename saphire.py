@@ -70,20 +70,43 @@ def isolate_requests(har_file):
 
 def dict_generator(indict, pre=None):
     # from this question: https://stackoverflow.com/questions/12507206/python-recommended-way-to-walk-complex-dictionary-structures-imported-from-json
+    # works in ALMOST all cases... replaced by a home-made one.
     pre = pre[:] if pre else []
     if isinstance(indict, dict):
         for key, value in indict.items():
             if isinstance(value, dict):
-                for d in dict_generator(value, [key] + pre):
+                for d in dict_generator(value, pre + [key]):
                     yield d
             elif isinstance(value, list) or isinstance(value, tuple):
                 for v in value:
-                    for d in dict_generator(v, [key] + pre):
+                    for d in dict_generator(v, pre + [key]):
                        yield d
             else:
                 yield pre + [key, value]
     else:
         yield indict
+
+
+
+def walk(x,all_strings):
+    """
+    Recursive function to walk a json dict adding all Keys, Values and their Values to an array
+
+    :param x: could be bool | u | int/float | list/tuple | dict
+    :param all_strings: the array we incrementally fill with with all tokens
+    """
+    if isinstance(x, dict):
+        for (k,v) in x.items():
+            # keys must be strings
+            all_strings.append(k)
+            walk(v,all_strings)
+    elif isinstance(x,list) or isinstance(x,tuple):
+        for el in x:
+            walk(el,all_strings)
+    else:
+        all_strings.append(unicode(x))
+
+
 
 
 
@@ -160,22 +183,25 @@ def recognize_tokens():
         except KeyError:
             pass
 
-        """
+
         try:
-            ###### resp body
+            ###### json in resp body
             if 'application/json' in [ h['value'] for h in e['response']['headers']]:
                 body = e['response']['content']['text']
-                all_lists = []
-                for l in dict_generator(body):                          # TODO test this
-                    all_lists += l
-                all_strings = list(set(all_lists))                      # unique-ify
-                for s in all_strings:
-                    t = Token('resp', e['saphireTime'], ('',s))
+                resp_json = get_json(body)
+
+                all_strings = []
+                walk(resp_json,all_strings)
+                all_strings = list(set(all_strings))  # unique-ify
+                for el in all_strings:
+                    if isinstance(el,bool):
+                        continue                                    # ignore True/False
+                    t = Token('json', e['saphireTime'], ('',unicode(el)))
                     t.match_and_insert(tokens)
                     recognized += 1
         except KeyError:
             pass
-        """
+
 
         try:
             ###### resp cookies
@@ -256,7 +282,8 @@ def make_term_safe(text):
             except IndexError:
                 ret += ''
                 return ret
-
+        elif text[i] in string.whitespace and text[i]!=' ':
+            ret += ''                                               # skip whitespace (except of the space)
         else:
             ret += text[i]
         i += 1
@@ -295,8 +322,6 @@ def fit_print(line, offset, threshold, first_last=False):
 
     else:
         threshold_w_nonp = threshold
-
-
 
     print_line = ''
     if first_last:                                                   
@@ -394,33 +419,13 @@ def flow_print():
             if l:
                 if xpand == XPAND_HORZ:
 
-                    line = "%10s|" % t_type
-                    for j in range(l):
-                        rtc = req_tokens_by_type[t_type][j]
-
-                        key     = rtc.tuple[0]
-                        value   = (rtc.tuple[1][:max_len]+'...') if len(rtc.tuple[1]) > max_len else rtc.tuple[1]
-                        colord_token = "%s=%s" % ( key,value )
-                        if color_opt!=COLOR_OPTS[0]:
-                            if rtc.fcolor:                          # in try-match mode some tokens are not colored!
-                                colord_token = termcolor.colored( colord_token, rtc.fcolor)
-
-                        line += "%s%s" % (colord_token,' ' if j<l-1 else '')
-                    fit_print(line, 0, req_thres)
+                    print_xpanding_horz(req_tokens_by_type, t_type, l, max_len,
+                                        columns, req_thres, resp_offset, True)
 
                 elif xpand == XPAND_VERT:
 
-                    for j in range(l):
-                        line = "%10s|" % ' '
-                        if j==0:                                    # special care for the first line
-                            line = "%10s|" % t_type
-
-                        rtc = req_tokens_by_type[t_type][j]
-                        colord_token = "%s=%s" % (rtc.tuple[0], rtc.tuple[1])
-                        if color_opt != COLOR_OPTS[0]:
-                            if rtc.fcolor:                          # in try-match mode some tokens are not colored!
-                                colord_token = termcolor.colored(colord_token, rtc.fcolor)
-                        fit_print(line + colord_token, 0, req_thres)
+                   print_xpanding_vert(req_tokens_by_type, t_type, l,
+                                       columns, req_thres, resp_offset, True)
 
         fit_print('_'*500, 0, req_thres, True)
         
@@ -432,51 +437,93 @@ def flow_print():
         fit_print(line,resp_offset, columns-2)
         fit_print('-'*500, resp_offset, columns-2)
 
-        for t_type in ['rsp_header','set_cookie','resp','html']:
+        for t_type in ['rsp_header','set_cookie','json','html']:
             l = len(req_tokens_by_type[t_type])
             if l:
                 if xpand == XPAND_HORZ:
 
-                    line = "%10s|" % t_type
-                    for j in range(l):
-                        rtc = req_tokens_by_type[t_type][j]
-
-                        key     = rtc.tuple[0]
-                        value   = (rtc.tuple[1][:max_len]+'...') if len(rtc.tuple[1]) > max_len else rtc.tuple[1]
-                        colord_token = ''
-                        if t_type == 'html':
-                            colord_token = "<input type=%s name=%s %s/>" % (key, value, ( "id="+rtc.tuple[2] ) if len(rtc.tuple)==3 else '' )
-                        else:
-                            colord_token = "%s=%s" % (key, value)
-                        if color_opt!=COLOR_OPTS[0]:
-                            if rtc.fcolor:                          # in try-match mode some tokens are not colored!
-                                colord_token = termcolor.colored( colord_token, rtc.fcolor)
-
-                        line += "%s%s" % (colord_token,' ' if j<l-1 else '')
-                    fit_print(line,resp_offset,columns-2)
+                    print_xpanding_horz(req_tokens_by_type, t_type, l, max_len,
+                                        columns, req_thres, resp_offset, False)
 
                 elif xpand == XPAND_VERT:
 
-                    for j in range(l):
-                        line = "%10s|" % ' '
-                        if j==0:                                    # special care for the first line
-                            line = "%10s|" % t_type
-
-                        rtc = req_tokens_by_type[t_type][j]
-                        colord_token = ''
-                        if t_type=='html':
-                            colord_token = "<input type=%s name=%s %s/>" \
-                                           % (rtc.tuple[0], rtc.tuple[1], ( "id="+rtc.tuple[2] ) if len(rtc.tuple)==3 else '' )
-                        else:
-                            colord_token = "%s=%s" % (rtc.tuple[0], rtc.tuple[1])
-                        if color_opt != COLOR_OPTS[0]:
-                            if rtc.fcolor:                          # in try-match mode some tokens are not colored!
-                                colord_token = termcolor.colored(colord_token, rtc.fcolor)
-                        fit_print(line + colord_token,resp_offset,columns-2)
+                    print_xpanding_vert(req_tokens_by_type, t_type, l,
+                                        columns, req_thres, resp_offset, False)
 
 
         fit_print('_'*500, resp_offset, columns-2,True)
         print '\n'
+
+
+def print_xpanding_horz(req_tokens_by_type, t_type, array_len, max_len, columns, req_thres, resp_offset, request):
+    """
+
+    :param req_tokens_by_type:
+    :param t_type:
+    :param array_len:
+    :param max_len:
+    :param columns:
+    :param resp_offset:
+    :param request (Boolean): Whether we are printing for a request or response
+    :return:
+    """
+    line = "%10s|" % t_type
+    for j in range(array_len):
+        rtc = req_tokens_by_type[t_type][j]
+
+        key = rtc.tuple[0]
+        value = (rtc.tuple[1][:max_len] + '...') if len(rtc.tuple[1]) > max_len else rtc.tuple[1]
+        colord_token = ''
+        if t_type == 'html':
+            colord_token = "<input type=%s name=%s %s/>" \
+                           % ( key, value, ("id=" + rtc.tuple[2]) if len(rtc.tuple) == 3 else '')
+        else:
+            colord_token = "%s=%s" % (key, value)
+        if color_opt != COLOR_OPTS[0]:
+            if rtc.fcolor:  # in try-match mode some tokens are not colored!
+                colord_token = termcolor.colored(colord_token, rtc.fcolor)
+
+        line += "%s%s" % (colord_token, ' ' if j < array_len - 1 else '')
+    if request:
+        fit_print(line, 0, req_thres)
+    else:
+        fit_print(line, resp_offset, columns - 2)
+
+
+def print_xpanding_vert(req_tokens_by_type, t_type, array_len, columns, req_thres, resp_offset, request):
+    """
+
+    :param req_tokens_by_type:
+    :param t_type:
+    :param array_len:
+    :param columns:
+    :param resp_offset:
+    :param request (Boolean): Whether we are printing for a request or response
+    :return:
+    """
+    for j in range(array_len):
+        line = "%10s|" % ' '
+        if j == 0:  # special care for the first line
+            line = "%10s|" % t_type
+
+        rtc = req_tokens_by_type[t_type][j]
+        colord_token = ''
+        if t_type == 'html':
+            colord_token = "<input type=%s name=%s %s/>" \
+                           % (rtc.tuple[0], rtc.tuple[1], ("id=" + rtc.tuple[2]) if len(rtc.tuple) == 3 else '')
+        else:
+            colord_token = "%s=%s" % (rtc.tuple[0], rtc.tuple[1])
+        if color_opt != COLOR_OPTS[0]:
+            if rtc.fcolor:  # in try-match mode some tokens are not colored!
+                colord_token = termcolor.colored(colord_token, rtc.fcolor)
+
+        if t_type=='json':
+            pass
+
+        if request:
+            fit_print(line + colord_token, 0, req_thres)
+        else:
+            fit_print(line + colord_token, resp_offset, columns - 2)
 
 
 
@@ -490,6 +537,34 @@ def is_colored(text):
         if pre in text:
             return True
     return False
+
+
+
+def get_json(body):
+    """
+    Extract JSON from response body, ignoring possible JSON-hijacking defenses.
+    Cases I've seen:
+        - ')]}\',\n{"tags": [{"name": "Medium",...  (google)
+        - "for (;;); {\"t\":\"batched\",\"bat...    (facebook)
+        - "while(1);[['u',[...                      (google)
+        - &&&START&&& {...                          (older google)
+    and all of them work by attaching code/junk in fron of the actual object, so the proposed
+    solution is to look for a JSON starting in the first 20 characters, not just the first one
+    """
+
+    for i in range(20):
+        try:
+            json_resp = json.loads( body[i:] )
+            if debug:
+                print "[+] Extracted JSON starting from pos %d: %s..." % (i,json.dumps(json_resp)[:30])
+            return json_resp
+        except ValueError:
+            pass
+
+
+
+
+
 
 
 def urldecode(text):
@@ -544,6 +619,7 @@ def is_urlencoded(text):
 
 
 def is_b64encoded(text):
+    #TODO add another heuristic: when words appear in encoded-> It's not (pyenchant)
     """
     A string is inferred as base64 encoded, by:
     - The alphabet used (A-Za-z0-9=+-/_)
@@ -629,7 +705,7 @@ class Token:
     fg_colors = [ 'red', 'green', 'yellow', 
                  'blue', 'magenta', 'cyan', 'white']
     bg_colors = [ 'on_'+fc for fc in fg_colors ]
-    types = ['url', 'cookie', 'set_cookie', 'req_header', 'rsp_header', 'form', 'resp', 'html']
+    types = ['url', 'cookie', 'set_cookie', 'req_header', 'rsp_header', 'form', 'json', 'html']
     fc = 0                                                          # static =class-scoped counter for fg color idx in array
 
     def __init__(self, ttype, ttime, ttuple):
