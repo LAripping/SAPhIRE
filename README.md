@@ -84,6 +84,10 @@ First manually carry out the flow (assumed Chrome): Open Dev Tools -> `Network` 
    ​
 
 
+`-s, --nosmart` don't attempt any smart decoding. Useful in (rare) cases it messes up
+
+
+
 `-x, --expand` Specify how to spread the different tokens of each category (meaningful only in flow_print mode) Possible Values:
 
 * `h` for Horizontal expansion. This will lead to a summarized view focusing more on the flow . like: 
