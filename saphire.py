@@ -14,6 +14,9 @@ import argparse
 import time
 import bs4
 import unicodedata
+import enchant
+from enchant.tokenize import get_tokenizer
+
 
 
 def isolate_requests(har_file):
@@ -415,17 +418,13 @@ def flow_print():
 
         fit_print('-'*10 + '+' + '-'*500, 0, req_thres)
         for t_type in ['url', 'cookie', 'req_header', 'form']:
-            l = len(req_tokens_by_type[t_type])
-            if l:
-                if xpand == XPAND_HORZ:
+            if xpand == XPAND_HORZ:
+                print_xpanding_horz(req_tokens_by_type, t_type, max_len,
+                                    columns, req_thres, resp_offset, True)
 
-                    print_xpanding_horz(req_tokens_by_type, t_type, l, max_len,
-                                        columns, req_thres, resp_offset, True)
-
-                elif xpand == XPAND_VERT:
-
-                   print_xpanding_vert(req_tokens_by_type, t_type, l,
-                                       columns, req_thres, resp_offset, True)
+            elif xpand == XPAND_VERT:
+                print_xpanding_vert(req_tokens_by_type, t_type,
+                                    columns, req_thres, resp_offset, True)
 
         fit_print('_'*500, 0, req_thres, True)
         
@@ -438,35 +437,34 @@ def flow_print():
         fit_print('-'*500, resp_offset, columns-2)
 
         for t_type in ['rsp_header','set_cookie','json','html']:
-            l = len(req_tokens_by_type[t_type])
-            if l:
-                if xpand == XPAND_HORZ:
+            if xpand == XPAND_HORZ:
+                print_xpanding_horz(req_tokens_by_type, t_type, max_len,
+                                    columns, req_thres, resp_offset, False)
 
-                    print_xpanding_horz(req_tokens_by_type, t_type, l, max_len,
-                                        columns, req_thres, resp_offset, False)
-
-                elif xpand == XPAND_VERT:
-
-                    print_xpanding_vert(req_tokens_by_type, t_type, l,
-                                        columns, req_thres, resp_offset, False)
-
+            elif xpand == XPAND_VERT:
+                print_xpanding_vert(req_tokens_by_type, t_type,
+                                    columns, req_thres, resp_offset, False)
 
         fit_print('_'*500, resp_offset, columns-2,True)
         print '\n'
 
 
-def print_xpanding_horz(req_tokens_by_type, t_type, array_len, max_len, columns, req_thres, resp_offset, request):
+def print_xpanding_horz(req_tokens_by_type, t_type, max_len, columns, req_thres, resp_offset, request):
     """
+    Print tokens of the type specified in the same line
 
-    :param req_tokens_by_type:
-    :param t_type:
-    :param array_len:
-    :param max_len:
-    :param columns:
-    :param resp_offset:
+    :param req_tokens_by_type: the array of tokens of same type to be printed
+    :param t_type: the type all tokens passed belong to
+    :param max_len: the maximum length a token can hold in the crowded line
+    :param columns: the width of the terminal window
+    :param req_thres: the threshold, the requests should span until, width-speaking
+    :param resp_offset: the absolute position of the req/resp split
     :param request (Boolean): Whether we are printing for a request or response
-    :return:
     """
+    array_len = len(req_tokens_by_type[t_type])
+    if array_len == 0:
+        return
+
     line = "%10s|" % t_type
     for j in range(array_len):
         rtc = req_tokens_by_type[t_type][j]
@@ -480,7 +478,7 @@ def print_xpanding_horz(req_tokens_by_type, t_type, array_len, max_len, columns,
         else:
             colord_token = "%s=%s" % (key, value)
         if color_opt != COLOR_OPTS[0]:
-            if rtc.fcolor:  # in try-match mode some tokens are not colored!
+            if rtc.fcolor:                                          # in try-match mode some tokens are not colored!
                 colord_token = termcolor.colored(colord_token, rtc.fcolor)
 
         line += "%s%s" % (colord_token, ' ' if j < array_len - 1 else '')
@@ -490,20 +488,24 @@ def print_xpanding_horz(req_tokens_by_type, t_type, array_len, max_len, columns,
         fit_print(line, resp_offset, columns - 2)
 
 
-def print_xpanding_vert(req_tokens_by_type, t_type, array_len, columns, req_thres, resp_offset, request):
+def print_xpanding_vert(req_tokens_by_type, t_type, columns, req_thres, resp_offset, request):
     """
+    Print tokens of the type specified, one line each
 
-    :param req_tokens_by_type:
-    :param t_type:
-    :param array_len:
-    :param columns:
-    :param resp_offset:
+    :param req_tokens_by_type: the array of tokens of same type to be printed
+    :param t_type: the type all tokens passed belong to
+    :param columns: the width of the terminal window
+    :param req_thres: the threshold, the requests should span until, width-speaking
+    :param resp_offset: the absolute position of the req/resp split
     :param request (Boolean): Whether we are printing for a request or response
-    :return:
     """
+    array_len = len(req_tokens_by_type[t_type])
+    if array_len == 0:
+        return
+
     for j in range(array_len):
         line = "%10s|" % ' '
-        if j == 0:  # special care for the first line
+        if j == 0:                                                  # special care for the first line
             line = "%10s|" % t_type
 
         rtc = req_tokens_by_type[t_type][j]
@@ -514,11 +516,8 @@ def print_xpanding_vert(req_tokens_by_type, t_type, array_len, columns, req_thre
         else:
             colord_token = "%s=%s" % (rtc.tuple[0], rtc.tuple[1])
         if color_opt != COLOR_OPTS[0]:
-            if rtc.fcolor:  # in try-match mode some tokens are not colored!
+            if rtc.fcolor:                                          # in try-match mode some tokens are not colored!
                 colord_token = termcolor.colored(colord_token, rtc.fcolor)
-
-        if t_type=='json':
-            pass
 
         if request:
             fit_print(line + colord_token, 0, req_thres)
@@ -619,14 +618,14 @@ def is_urlencoded(text):
 
 
 def is_b64encoded(text):
-    #TODO add another heuristic: when words appear in encoded-> It's not (pyenchant)
     """
     A string is inferred as base64 encoded, by:
-    - The alphabet used (A-Za-z0-9=+-/_)
-    AND
-    - whether it decodes
 
-    Red flags are:
+     Red flags are:
+    - non base64 alphabet
+    - it fails to decode
+
+    - has valid words
     - Short- or odd-length'ed strings
     - Strings with more digits than letters
     - Strings with not-low frequency of symbols
@@ -641,28 +640,45 @@ def is_b64encoded(text):
     # inferred from the alphabet used
     #  instead of 'yes' return 'yes '+variation
 
-    if len(text) < 10 or len(text) % 2 == 1:
-        return 'no'
-    if len( [d for d in text if d in string.digits] ) > len( [l for l in text if l in string.letters] ):
-        return 'no'
-    if float( len( [d for d in text if d in list("=+-/_")] ) ) > 20.0/100.0 * float( len(text) ):
-        return 'no'
-    if ( text.isupper() or text.islower() ) and len( [c for c in text if c not in string.hexdigits+"=+-/_"] )==0:
-        # effectively: not .ismixed()       and          all chars in hexdigits+symbols
-        return 'no'
 
-
+    ##### Red flags
     base64_alphabet = list(string.ascii_letters + string.digits + "=+-/_")
     for c in text:
         if c not in base64_alphabet:
             return 'no'
-
     try:
-        decoded = base64.b64decode(text)
+        _ = base64.b64decode(text)
     except Exception:
         return 'no'
 
-    return 'yes'
+    ##### Do the Tests
+    conf = 1.0
+    if has_valid_words(text):
+        conf += -0.3
+    if len(text) < 25 or len(text) % 2 == 1:
+        conf += -0.2
+    if len( [d for d in text if d in string.digits] ) > len( [l for l in text if l in string.letters] ):
+        conf += -0.2
+    if float( len( [d for d in text if d in list("=+-/_")] ) ) > 20.0/100.0 * float( len(text) ):
+        conf += -0.2
+    if ( text.isupper() or text.islower() ) and len( [c for c in text if c not in string.hexdigits+"=+-/_"] )==0:
+        # effectively: not .ismixed()       and          all chars in hexdigits+symbols
+        conf += -0.2
+    if text[:-1]=='=':
+        conf += 0.2
+    if text[:-2]=='==':
+        conf += 0.2
+    # TODO another test:
+    # count different symbols appearing (besides =)
+
+    ##### Decide on results
+    if conf <= 0.5:
+        return 'no'
+    else:
+        return 'yes'
+
+
+
 
 
 def base64decode(text):
@@ -682,6 +698,31 @@ def base64decode(text):
             ret += c
 
     return ret
+
+
+
+def has_valid_words(text):
+    """
+    Use pyenchant to try and guess if it's text, to help defer
+    when to (or not to) do some smart decoding operations
+
+    It produces a few false positives, but never a false negative
+
+    :param text: the token to be checked
+    :return: True if it surely has valid words, False if it surely doesn't, None when not sure...
+    """
+    d = enchant.Dict("en_US")                                       # TODO recognize locale and add another dict
+    if d.check(text):
+        return True
+
+    tknzr = get_tokenizer('en_US')
+    for word_tuple in tknzr(text):
+        word = word_tuple[0]
+        if d.check(word):
+            return True
+        if d.suggest(word) != []:
+            return True
+
 
 
 
@@ -745,8 +786,8 @@ class Token:
 
         ##### Smart decoding
 
-        key =   smart_decode(self.tuple[0]) if smart_decoding else self.tuple[0]
-        value = smart_decode(self.tuple[1]) if smart_decoding else self.tuple[1]
+        key =   smart_decode(self.tuple[0]) if smart_decoding and self.tuple[0] else self.tuple[0]
+        value = smart_decode(self.tuple[1]) if smart_decoding and self.tuple[1] else self.tuple[1]
 
         self.tuple = (key, value) if len(self.tuple)==2 else (key, value, self.tuple[2])
 
