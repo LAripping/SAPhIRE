@@ -142,22 +142,37 @@ def recognize_tokens():
 
         try:
             ###### cookies
-            for c in e['request']['cookies']:
-                t = Token('cookie', e['saphireTime'], (c['name'],c['value']) )
-                t.match_and_insert(tokens)
-                recognized += 1
+            if e['request']['cookies'] != []:
+                for c in e['request']['cookies']:
+                    t = Token('cookie', e['saphireTime'], (c['name'],c['value']) )
+                    t.match_and_insert(tokens)
+                    recognized += 1
+            else:                                                   # check the header
+                cookie_string = [ h['value'] for h in e['request']['headers'] if h['name'].lower()=='cookie' ][0]
+                for c in cookie_string.split('; '):
+                    t = Token('cookie', e['saphireTime'], (c.split('=')[0] ,c.split('=')[1]) )
+                    t.match_and_insert(tokens)
+                    recognized += 1
         except KeyError:
+            pass
+        except IndexError:
             pass
 
         try:
             ###### form fields
-            if e['request']['method'] == 'POST':                        # TODO what about PUT ?
+            if e['request']['method'] == 'POST':
                 if 'application/x-www-form-urlencoded' in [ h['value'] for h in e['request']['headers'] ]:
                                                                         # TODO what about application/form-multipart
-                    for f in e['request']['postData']['params']:
-                        t = Token('form', e['saphireTime'], (f['name'],f['value']) )
-                        t.match_and_insert(tokens)
-                        recognized += 1
+                    if e['request']['postData']['params'] != []:
+                        for f in e['request']['postData']['params']:
+                            t = Token('form', e['saphireTime'], (f['name'],f['value']) )
+                            t.match_and_insert(tokens)
+                            recognized += 1
+                    else:
+                        for f in e['request']['postData']['text'].split('&'):
+                            t = Token('form', e['saphireTime'], (f.split('=')[0],f.split('=')[1]) )
+                            t.match_and_insert(tokens)
+                            recognized += 1
         except KeyError:
             pass
 
@@ -195,7 +210,7 @@ def recognize_tokens():
 
                 all_strings = []
                 walk(resp_json,all_strings)
-                all_strings = list(set(all_strings))  # unique-ify
+                all_strings = list(set(all_strings))                # unique-ify
                 for el in all_strings:
                     if isinstance(el,bool):
                         continue                                    # ignore True/False
@@ -208,13 +223,21 @@ def recognize_tokens():
 
         try:
             ###### resp cookies
-            for c in e['response']['cookies']:
-                t = Token('set_cookie', e['saphireTime'], (c['name'], c['value']))
-                t.match_and_insert(tokens)
-                recognized += 1
+            if e['response']['cookies'] != []:
+                for c in e['response']['cookies']:
+                    t = Token('set_cookie', e['saphireTime'], (c['name'], c['value']))
+                    t.match_and_insert(tokens)
+                    recognized += 1
+            else:
+                cookie_string = [ h['value'] for h in e['response']['headers'] if h['name'].lower()=='set-cookie' ][0]
+                for c in cookie_string.split('\n'):
+                    t = Token('set_cookie', e['saphireTime'], (c.split('=')[0] ,c.split('=')[1].split('; ')[0]) )
+                    t.match_and_insert(tokens)
+                    recognized += 1
         except KeyError:
             pass
-
+        except IndexError:
+            pass
 
         try:
             ###### html input fields
@@ -884,7 +907,7 @@ def smart_decode(string):
 def hartime_to_saphire(time_string):
     """about time:
 
-    > time_string = "2017-11-28T20:14:53.852Z"
+    > time_string = "2017-11-28T20:14:53.852Z" or "2017-12-14T09:12:08.737+02:00" on Firefox HARs
 
     > time_struct = time.strptime( time_string.split('.')[0], "%Y-%m-%dT%H:%M:%S")
     time.struct_time(tm_year=2017, tm_mon=11, tm_mday=28, tm_hour=20, tm_min=14, tm_sec=53, tm_wday=1, tm_yday=332, tm_isdst=-1)
@@ -892,7 +915,9 @@ def hartime_to_saphire(time_string):
     > timestamp = str( time.mktime(time_struct) ).split('.')[0]
     1511892893
 
-    > mili = time_string.split('.')[1].split('Z')[0]
+    > mili_re = r"[0-9]*"
+
+    > mili = re.findall( mili_re, time_string.split('.')[1] )[0]
     852
 
     > float(timestamp+'.'+mili)
@@ -900,7 +925,8 @@ def hartime_to_saphire(time_string):
     """
     time_struct = time.strptime( time_string.split('.')[0], "%Y-%m-%dT%H:%M:%S")
     timestamp = str(time.mktime(time_struct)).split('.')[0]
-    mili = time_string.split('.')[1].split('Z')[0]
+    mili_re = r"[0-9]*"
+    mili = re.findall(mili_re, time_string.split('.')[1] )[0]
     return float(timestamp+'.'+mili)
 
 

@@ -60,9 +60,13 @@ pip install requirements.txt
 
 ## Usage
 
-First manually carry out the flow (assumed Chrome): Open Dev Tools -> `Network` -> Check `Preserve Log`, clear it and... -> ( do the flow ) -> Right click -> `Save as HAR with content`. Then:
+Go ahead and visit a production site you always wanted to script! First manually carry out the flow (assumed Firefox\*): Open Dev Tools -> `Network` tab -> Check `Persist Logs`, clear it and... -> ( do the flow ) -> Right click -> `Save as HAR`. Then:
 
 <a href="https://asciinema.org/a/YxEnyseHyMsXYtkoxtd3UJfBv?autoplay=1" target="_blank"><img src="https://asciinema.org/a/lFzXW6qZ75zqrV3ccxRH4v0nF.png" /></a>
+
+
+
+\* The tool was originally developed and tested with Chrome, but after many indications, I realized it hides important form parameters from HAR files (as well as `curl` dumps). Mozilla Firefox instead revealed everything. For more see Issue #11  
 
 
 
