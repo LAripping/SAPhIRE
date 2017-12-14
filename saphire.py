@@ -343,6 +343,9 @@ def fit_print(line, offset, threshold, first_last=False):
             if line[i:i+5] in COLOR_PREFIXES:
                 threshold_w_nonp += 5
                 i += 4
+            elif line[i:i + 4] in COLOR_ATTR_PREFIXES:
+                threshold_w_nonp += 4
+                i += 3
             elif line[i:i + 4] in termcolor.RESET:
                 threshold_w_nonp += 4
                 i += 3
@@ -352,7 +355,8 @@ def fit_print(line, offset, threshold, first_last=False):
             i += 1
             if printable==threshold:
                 break
-        threshold_w_nonp = max(threshold_w_nonp,threshold)
+        #threshold_w_nonp = max(threshold_w_nonp,threshold)
+        threshold_w_nonp = threshold + (threshold_w_nonp-printable)
 
     else:
         threshold_w_nonp = threshold
