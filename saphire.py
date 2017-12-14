@@ -204,7 +204,7 @@ def recognize_tokens():
 
         try:
             ###### json in resp body
-            if 'application/json' in [ h['value'] for h in e['response']['headers']]:
+            if 'application/json' or 'text/javascript' in [ h['value'] for h in e['response']['headers']]:
                 body = e['response']['content']['text']
                 resp_json = get_json(body)
 
