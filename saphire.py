@@ -34,10 +34,10 @@ def isolate_requests(har_file):
     if fdomain:
         for e in list(req_resp):                                    # iterating over a copy
             u = urlparse.urlparse(e['request']['url'])
-            if fdomain not in u.netloc:
+            if fdomain not in u.netloc+u.path:
                 req_resp.remove(e)
                 if debug: 
-                    print '[+] Filtered out entry with url: %s' % u.netloc
+                    print '[+] Filtered out entry with url: %s' % u.netloc+u.path
 
 
 

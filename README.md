@@ -51,7 +51,7 @@ git clone https://github.com/LAripping/SAPhIRE && cd SAPhIRE/
 sudo pip install virtualenv
 virtualenv saphvenv
 source saphvenv/bin/activate
-pip install requirements.txt
+pip install -r requirements.txt
 ```
 
 
@@ -146,86 +146,12 @@ Go ahead and visit a production site you always wanted to script! First manually
 
 ## TODOs
 
-- [x] Flow-print with colors
-- [ ] migrate TODOs on Issues, with colored labels (red `BUG`, green `FEATURE-minor` :complete  half made ones, blue `FEATURE-major` :write from scratch) and leave a link to [Issues]() in the TODOs section
-- [ ] smart decoding: url / html / ~~base64~~ / ~~gzip~~ / jwt (gameboard.har -> session cookie, then pass in `resp` dict-generator)
-- [x] tokens from: scraping  `<input type=hidden value>` from html. Resarch if we can do anythin with js ones (resurgence of the regex?)
-- [ ] Flow-graph w. GUI lib ( `matplotlib` / `pyqt` / ... ?)
-      - [ ] If no GUI: Support for fine-grained input  from the user:
-            * json conf file with standard options available, for more control over domain filters, tokens to ignore  since recognized as junk/useless, regexes (r'..') or bash-like (*?)
-- [ ] Prepare Release:
+- [ ] Write a Use Case section with a flow that is revealed. Must highlight most of:
 
-* Write a Use Case section with a flow that is revealed. Must highlight most of:
-  * smart decoding 
-    * [ratpack.gr.har]() has [url url] transformation to show recursive
-    * and [akispetretzikis.com.har]() has [url b64 no-url]
-    * [akispetretzikis.com.har]() demonstrates the no-b64 decoded strings (`x-request-id`)
-    * [skroutz.gr.har]() demonstrates the utf8 functionality (greek chars `Σύγκριση τιμών`)
-  * tokens leading to curl- ing
-  * **Web CTFs** find a case, solve it with saphire, make sciinema, add section in README
-
-- [ ] research common tokens `_ga` `_gat` `_gid` (in cookies)
-
-      ​
-
-
-
-
-
-
-
-
-
-
-## Debugging
-
-Use https://toolbox.googleapps.com/apps/har_analyzer/ for a tool as close as the Browser's Dev. Tab (after closing it)
-
-Included example .har files
-
-Flow to highlight (required): (couldn't verify)
-
-1. ```http
-   GET - https://gameboard.pentestcyprus.org/login
-   ```
-
-   ```http
-   200 OK
-   Set-Cookie: XSRF-TOKEN=zkfyWcef2k4FE9G9nvYgnX1V-Nyp7A55KlK7cvJyEWN41ZDC; Path=/
-   ```
-
-   ​
-
-
-2. ```http
-   POST - https://gameboard.pentestcyprus.org/api/session
-   Cookie: XSRF-TOKEN=xkHyWUII2A8AH8B_aWKZxyluCrthK8SOGhal5YCWoL9VdFVk
-   XSRF-TOKEN: xkHyWUII2A8AH8B_aWKZxyluCrthK8SOGhal5YCWoL9VdFVk
-
-   {"email":"leo.tsaou@gmail.com","password":"t4nTjmew%p2J"}
-   ```
-
-   ```http
-   200 OK
-   Set-Cookie: session=eyJhZG1pbiI6ZmFsc2UsImV4cGlyZXMiOjE1MDg5NjYwMjksInRlYW0iOjU1LCJ1c2VyIjo1Nn0.DNKB_Q.9Uo78wftOMJ7367H5acwsZVRa3Q
-
-   {
-     "redirect": null,
-     "user": {
-       "uid": 56,
-       "admin": false,
-       "email": "leo.tsaou@gmail.com",
-       "nick": "LAripping",
-       "registrationToken": "842015666",
-       "team_tid": 55
-     },
-     "team": {
-       "tid": 55,
-       "score": 2392,
-       "name": "LAripping",
-       "code": "866b726b1e45"
-     }
-   }
-   ```
-
-   ​
+* smart decoding 
+  * [ratpack.gr.har]() has [url url] transformation to show recursive
+  * and [akispetretzikis.com.har]() has [url b64 no-url]
+  * [akispetretzikis.com.har]() demonstrates the no-b64 decoded strings (`x-request-id`)
+  * [skroutz.gr.har]() demonstrates the utf8 functionality (greek chars `Σύγκριση τιμών`)
+* tokens leading to curl- ing
+* **Web CTFs** find a case, solve it with saphire, make asciinema, add section in README
