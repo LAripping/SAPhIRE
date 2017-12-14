@@ -198,7 +198,15 @@ def recognize_tokens():
                 t = Token('rsp_header', e['saphireTime'], (h['name'],h['value']) )
                 t.match_and_insert(tokens)
                 recognized += 1
+
+            if str(e['response']['status'])[0]=='3':
+                location = [ h['value'] for h in e['response']['headers'] if h['name'].lower()=='location' ][0]
+                t = Token('rsp_header', e['saphireTime'], ('location',location))
+                t.match_and_insert(tokens)
+                recognized += 1
         except KeyError:
+            pass
+        except IndexError:
             pass
 
 
