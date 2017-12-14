@@ -74,7 +74,6 @@ Go ahead and visit a production site you always wanted to script! First manually
 `-c, --color` Determines the way the tokens will be colored (meaningful only in flow_print mode) Possible Values:
 
 
-
 0. ` off` no funky colors and stuff
 
 1. `by-type` rather dumb, fuzz around the colors for each type, no affiliation
@@ -83,14 +82,10 @@ Go ahead and visit a production site you always wanted to script! First manually
 
 3. `try-match-all` can't live without colors? Color every token and same ones get the same color.
 
-   ​
 
-   ​
 
 
 `-s, --nosmart` don't attempt any smart decoding. Useful in (rare) cases it messes up
-
-
 
 `-x, --expand` Specify how to spread the different tokens of each category (meaningful only in flow_print mode) Possible Values:
 
@@ -138,20 +133,3 @@ Go ahead and visit a production site you always wanted to script! First manually
 
 
 ```
-
-
-
-
-
-
-## TODOs
-
-- [ ] Write a Use Case section with a flow that is revealed. Must highlight most of:
-
-* smart decoding 
-  * [ratpack.gr.har]() has [url url] transformation to show recursive
-  * and [akispetretzikis.com.har]() has [url b64 no-url]
-  * [akispetretzikis.com.har]() demonstrates the no-b64 decoded strings (`x-request-id`)
-  * [skroutz.gr.har]() demonstrates the utf8 functionality (greek chars `Σύγκριση τιμών`)
-* tokens leading to curl- ing
-* **Web CTFs** find a case, solve it with saphire, make asciinema, add section in README
