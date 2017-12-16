@@ -15,7 +15,10 @@ import time
 import bs4
 import unicodedata
 import enchant
-from enchant.tokenize import get_tokenizer
+import enchant.tokenize
+import pprint
+import StringIO
+
 
 
 
@@ -214,19 +217,24 @@ def recognize_tokens():
 
         try:
             ###### json in resp body
-            if 'application/json' or 'text/javascript' in [ h['value'] for h in e['response']['headers']]:
-                body = e['response']['content']['text']
-                resp_json = get_json(body)
+            header_values = [ h['value'] for h in e['response']['headers']]
+            for v in header_values:
 
-                all_strings = []
-                walk(resp_json,all_strings)
-                all_strings = list(set(all_strings))                # unique-ify
-                for el in all_strings:
-                    if isinstance(el,bool):
-                        continue                                    # ignore True/False
-                    t = Token('json', e['saphireTime'], ('',unicode(el)))
-                    t.match_and_insert(tokens)
-                    recognized += 1
+                if 'application/json' in v \
+                        or 'application/x-javascript' in v \
+                        or 'text/javascript' in v:
+                    body = e['response']['content']['text']
+                    resp_json = get_json(body)
+                    e['response']['saphireJson'] = resp_json            # add the full dict, might need later...
+                    all_strings = []
+                    walk(resp_json,all_strings)                         # ...now break the dict
+                    all_strings = list(set(all_strings))                # unique-ify
+                    for el in all_strings:
+                        if isinstance(el,bool):
+                            continue                                    # ignore True/False
+                        t = Token('json', e['saphireTime'], ('',unicode(el)))
+                        t.match_and_insert(tokens)
+                        recognized += 1
         except KeyError:
             pass
 
@@ -486,7 +494,7 @@ def flow_print():
         print '\n'
 
 
-def print_xpanding_horz(req_tokens_by_type, t_type, max_len, columns, req_thres, resp_offset, request):
+def print_xpanding_horz(req_tokens_by_type, t_type, max_len, columns, req_thres, resp_offset, is_request):
     """
     Print tokens of the type specified in the same line
 
@@ -496,7 +504,7 @@ def print_xpanding_horz(req_tokens_by_type, t_type, max_len, columns, req_thres,
     :param columns: the width of the terminal window
     :param req_thres: the threshold, the requests should span until, width-speaking
     :param resp_offset: the absolute position of the req/resp split
-    :param request (Boolean): Whether we are printing for a request or response
+    :param is_request (Boolean): Whether we are printing for a request or response
     """
     array_len = len(req_tokens_by_type[t_type])
     if array_len == 0:
@@ -512,6 +520,8 @@ def print_xpanding_horz(req_tokens_by_type, t_type, max_len, columns, req_thres,
         if t_type == 'html':
             colord_token = "<input type=%s name=%s %s/>" \
                            % ( key, value, ("id=" + rtc.tuple[2]) if len(rtc.tuple) == 3 else '')
+        elif t_type == 'json':
+            colord_token = "%s" % value
         else:
             colord_token = "%s=%s" % (key, value)
         if color_opt != COLOR_OPTS[0]:
@@ -519,13 +529,13 @@ def print_xpanding_horz(req_tokens_by_type, t_type, max_len, columns, req_thres,
                 colord_token = termcolor.colored(colord_token, rtc.fcolor)
 
         line += "%s%s" % (colord_token, ' ' if j < array_len - 1 else '')
-    if request:
+    if is_request:
         fit_print(line, 0, req_thres)
     else:
         fit_print(line, resp_offset, columns - 2)
 
 
-def print_xpanding_vert(req_tokens_by_type, t_type, columns, req_thres, resp_offset, request):
+def print_xpanding_vert(req_tokens_by_type, t_type, columns, req_thres, resp_offset, is_request):
     """
     Print tokens of the type specified, one line each
 
@@ -534,11 +544,44 @@ def print_xpanding_vert(req_tokens_by_type, t_type, columns, req_thres, resp_off
     :param columns: the width of the terminal window
     :param req_thres: the threshold, the requests should span until, width-speaking
     :param resp_offset: the absolute position of the req/resp split
-    :param request (Boolean): Whether we are printing for a request or response
+    :param is_request (Boolean): Whether we are printing for a request or response
     """
     array_len = len(req_tokens_by_type[t_type])
     if array_len == 0:
         return
+
+    if t_type == 'json':
+        """
+        treat whole array as single token, but print line by line and color-highlight
+        
+        for line in StringIO(  pprint.pformat(json.loads(s2[5:])) ):
+            print line
+        """
+        saphireTime_of_source_request = req_tokens_by_type[t_type][0].time
+        source_request = [ r for r in req_resp if r['saphireTime']==saphireTime_of_source_request ][0]
+        full_json = source_request['response']['saphireJson']
+                                                                    # pretty_print the full json object from the calling request
+        string_io = [ sl for sl in StringIO.StringIO( pprint.pformat(full_json) )]
+        for j in range(len(string_io)):
+            repr_line = string_io[j]
+
+            if color_opt != COLOR_OPTS[0]:
+                for rtc in req_tokens_by_type[t_type]:             # search in json tokens and color inside the pretty_print
+                    if rtc.fcolor and rtc.tuple[1] in repr_line:
+                        colord_token = termcolor.colored(rtc.tuple[1], rtc.fcolor)
+                        repr_line = repr_line.replace(rtc.tuple[1], colord_token)
+                        break
+
+            line = "%10s|" % ' '
+            if j == 0:                                              # special care for the first line
+                line = "%10s|" % t_type
+            if is_request:
+                fit_print(line + repr_line, 0, req_thres)
+            else:
+                fit_print(line + repr_line, resp_offset, columns - 2)
+            # TODO strip u'' tags (anything else?)
+        return
+
 
     for j in range(array_len):
         line = "%10s|" % ' '
@@ -556,7 +599,7 @@ def print_xpanding_vert(req_tokens_by_type, t_type, columns, req_thres, resp_off
             if rtc.fcolor:                                          # in try-match mode some tokens are not colored!
                 colord_token = termcolor.colored(colord_token, rtc.fcolor)
 
-        if request:
+        if is_request:
             fit_print(line + colord_token, 0, req_thres)
         else:
             fit_print(line + colord_token, resp_offset, columns - 2)
@@ -774,7 +817,7 @@ def has_valid_words(text):
     if d.check(text):
         return True
 
-    tknzr = get_tokenizer('en_US')
+    tknzr = enchant.tokenize.get_tokenizer('en_US')
     for word_tuple in tknzr(text):
         word = word_tuple[0]
         if d.check(word):
@@ -814,7 +857,7 @@ class Token:
         if ttype not in Token.types:
             exit('Unsupported type \''+ttype+'\'!')
         self.type = ttype
-        self.time = ttime
+        self.time = ttime                                           # saphireTime
         self.fcolor = ''
         if color_opt == COLOR_OPTS[1]:                              # "by-type" : loop colors for same-typed tokens, 
             bc = Token.types.index(ttype) % len(Token.bg_colors)
