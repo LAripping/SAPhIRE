@@ -20,11 +20,13 @@ from enchant.tokenize import get_tokenizer
 
 
 def isolate_requests(har_file):
-    global req_resp, debug
+    global req_resp, debug, harfile_pagetime
 
     har = {}
     with open(har_file) as harfile:
         har = json.load( harfile )
+
+    harfile_pagetime = har['log']['pages'][0]['startedDateTime']    # needed later on
 
     req_resp = har['log']['entries']
     if debug:
@@ -652,6 +654,28 @@ def is_urlencoded(text):
     return conf
 
 
+
+def is_timestamp(ts_string):
+    global harfile_pagetime
+
+    for c in ts_string:
+        if not c.isdigit():
+            return False
+
+    in_year = 0
+    try:
+        in_year = time.gmtime(int(ts_string)).tm_year
+    except ValueError:
+        return False
+
+    harfile_struct = time.strptime( harfile_pagetime.split('.')[0], "%Y-%m-%dT%H:%M:%S")
+    harfile_year = harfile_struct.tm_year
+
+    if abs(harfile_year - in_year) < 3:
+        return True
+
+
+
 def is_b64encoded(text):
     """
     A string is inferred as base64 encoded, by:
@@ -767,6 +791,7 @@ def has_valid_words(text):
 common_headers = []
 req_resp = []
 tokens = []
+harfile_pagetime = ''
 debug = False
 smart_decoding = True
 
@@ -889,10 +914,18 @@ def smart_decode(string):
             did_transformation = True
 
 
-        if 'yes' in is_b64encoded(string):                          # 3. Base 64
+        if 'yes' in is_b64encoded(string):                          # 2. Base 64
             string = base64decode(string)
             transformation_chain += 'b64 '
             did_transformation = True
+            if color_opt!=COLOR_OPTS[0]:
+                string = termcolor.colored(string, attrs=['underline'])
+
+
+        if is_timestamp(string):                                    # 3. Timestamp
+            string = timestamp_to_hartime(string)
+            transformation_chain += 'timestamp '
+            did_transformation = False                              # decode no further
             if color_opt!=COLOR_OPTS[0]:
                 string = termcolor.colored(string, attrs=['underline'])
 
@@ -912,7 +945,13 @@ def smart_decode(string):
 
 
 
-
+def timestamp_to_hartime(ts_string):
+    """
+    :param ts_string: something like u'1513235543670
+    :return: u'2017-11-28T20:14:53'
+    """
+    time_struct = time.gmtime(int(ts_string))
+    return time.strftime("%Y-%m-%dT%H:%M:%S", time_struct)
 
 
 

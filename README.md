@@ -15,7 +15,9 @@ It Isolates "tokens" like
 * Cookies
 * Headers
 * URL parameters
-* Form fields 
+* HTML input tags
+* Form fields in requests
+* JSON in responses
 
 ...and highlight them to make the underlying logic obvious. 
 
@@ -23,8 +25,12 @@ It Isolates "tokens" like
 
 ## Selling Points
 
-- [x] **Auto-decodes tokens** (html/url/base64) to spare the reverser of these easy but tiring chores
-- [x] **Ignores standard tokens** like [common Headers](/common_headers.txt) (e.g.  `Accept` / `Content-type` ) headers or `?encoding=utf-8` params.
+- [x] **Auto-decodes tokens** when type is recognized, to spare the reverser of the easy but tiring chore to manually do it on every occurrence. Types supported by *Smart Decoder*:
+      * URL-encoding (*bonus: Full Unicode Support*)
+      * Base64 encoding (recognition considering various heuristics)
+      * JWT *coming soon*
+      * timestamps
+- [x] **Ignores standard tokens** like [common Headers](/common_headers.txt) (e.g.  `Accept` / `Content-type` ) headers 
 - [x] **Filters out irrelevant requests && Ignores media/junk/...** with prompts at runtime.
 
 
@@ -35,10 +41,11 @@ Although in a manual examination, a trained eye will see the business logic bein
 *Bonus: Configurable colors*
 
 - [x] **Extracts the flow from the browser**: in HAR files, see Usage below.
+      * No need for MITM proxies / network sniffing to capture the flow. 
+      * No more certificate installing, pinning-bypasses.
 
-No need for MITM proxies / network sniffing to capture the flow. 
 
-No more certificate installing, pinning-bypasses.
+
 
 
 
