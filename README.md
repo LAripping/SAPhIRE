@@ -26,10 +26,10 @@ It Isolates "tokens" like
 ## Selling Points
 
 - [x] **Auto-decodes tokens** when type is recognized, to spare the reverser of the easy but tiring chore to manually do it on every occurrence. Types supported by *Smart Decoder*:
-      * URL-encoding (*bonus: Full Unicode Support*)
-      * Base64 encoding (recognition considering various heuristics)
-      * JWT *coming soon*
-      * timestamps
+    * URL-encoding (*bonus: Full Unicode Support*)
+    * Base64 encoding (recognition considering various heuristics)
+    * JWT decoding and parsing as tokens
+    * timestamps
 - [x] **Ignores standard tokens** like [common Headers](/common_headers.txt) (e.g.  `Accept` / `Content-type` ) headers 
 - [x] **Filters out irrelevant requests && Ignores media/junk/...** with prompts at runtime.
 
@@ -108,7 +108,6 @@ Go ahead and visit a production site you always wanted to script! First manually
  ____________________________________________________________________________________________________________________
  
 
-
 ```
 
 * `v` for Vertical expansion, *the default view*. Now we see the tokens in detail occupying more screen real estate per-request. 
@@ -118,25 +117,24 @@ Go ahead and visit a production site you always wanted to script! First manually
 |       #160|20:15:48.27                                              |
 |        GET|cdn.syndication.twimg.com /widgets/timelines/44954441... |
 | ----------+-----------------------------------------------------... |
-|        url|callback=__twttr.callbacks.tl_i0_449544415724326914_ol... |
-|           |dnt=false                                       |
-|           |domain=akispetretzikis.com                      |
-|           |lang=en                                         |
-|           |suppress_response_codes=true                    |
+|        url|callback=__twttr.callbacks.tl_i0_449544415724326914_o... |
+|           |dnt=false                                                |
+|           |domain=akispetretzikis.com                               |
+|           |lang=en                                                  |
+|           |suppress_response_codes=true                             |
 |           |t=1679889                                                |
 |           |tz=GMT+0200                                              |
-|     cookie|lang=en                                         |
+|     cookie|lang=en                                                  |
  _____________________________________________________________________
                                                                        __________________________________________________________________
                                                                       |  200                                                             |
                                                                       | -------------------------------------------------------------... |
                                                                       | rsp_header|x-cache=MISS                                          |
-                                                                      |           |x-served-by=cache-tw-par1-2-TWPAR1           |
+                                                                      |           |x-served-by=cache-tw-par1-2-TWPAR1                    |
                                                                       |           |x-response-time=247                                   |
                                                                       |           |x-timer=S1511900149.759974,VS0,VE258                  |
                                                                       |           |x-connection-hash=c043173fd3fa017e6d127140aa898aa6... |
                                                                        __________________________________________________________________
-
 
 
 ```
