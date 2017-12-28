@@ -5,7 +5,6 @@ import base64
 import json
 import urllib
 import urlparse
-import jwt
 import termcolor
 import os
 import string
@@ -167,7 +166,7 @@ def recognize_tokens():
             ###### form fields
             if e['request']['method'] == 'POST':
                 if 'application/x-www-form-urlencoded' in [ h['value'] for h in e['request']['headers'] ]:
-                                                                        # TODO what about application/form-multipart
+                                                                    # TODO what about application/form-multipart
                     if e['request']['postData']['params'] != []:
                         for f in e['request']['postData']['params']:
                             t = Token('form', e['saphireTime'], (f['name'],f['value']) )
@@ -225,16 +224,9 @@ def recognize_tokens():
                         or 'text/javascript' in v:
                     body = e['response']['content']['text']
                     resp_json = get_json(body)
-                    e['response']['saphireJson'] = resp_json            # add the full dict, might need later...
-                    all_strings = []
-                    walk(resp_json,all_strings)                         # ...now break the dict
-                    all_strings = list(set(all_strings))                # unique-ify
-                    for el in all_strings:
-                        if isinstance(el,bool):
-                            continue                                    # ignore True/False
-                        t = Token('json', e['saphireTime'], ('',unicode(el)))
-                        t.match_and_insert(tokens)
-                        recognized += 1
+                    e['response']['saphireJson'] = resp_json        # add the full dict, might need later...
+                    count = tokenize_json(resp_json,'json', e['saphireTime'])
+                    recognized += count
         except KeyError:
             pass
 
@@ -257,6 +249,7 @@ def recognize_tokens():
         except IndexError:
             pass
 
+
         try:
             ###### html input fields
             if 'text/html'== e['response']['content']['mimeType']:  # this also appears on XHTML
@@ -276,6 +269,24 @@ def recognize_tokens():
                     recognized += 1
         except KeyError:
             pass
+
+
+        try:
+            ###### JWTs                                             # discovered from match_and_insert > smart_decode call from the prev. ones
+            jwt_header  = e['saphireJWT']['header']
+            count =  tokenize_json(jwt_header, 'jwt_header', e['saphireTime'])
+            recognized += count
+        except KeyError:
+            pass
+
+        try:
+            jwt_payload = e['saphireJWT']['payload']
+            count = tokenize_json(jwt_payload, 'jwt_payload', e['saphireTime'])
+            recognized += count
+        except KeyError:
+            pass
+
+
 
         if debug:
             print '[+] Recognized %d tokens in req with saphireTime %0.3f' % (recognized,e['saphireTime'])
@@ -465,7 +476,7 @@ def flow_print():
         fit_print(line, 0, req_thres)
 
         fit_print('-'*10 + '+' + '-'*500, 0, req_thres)
-        for t_type in ['url', 'cookie', 'req_header', 'form']:
+        for t_type in ['url', 'cookie', 'req_header', 'form','jwt_header', 'jwt_payload']:
             if xpand == XPAND_HORZ:
                 print_xpanding_horz(req_tokens_by_type, t_type, max_len,
                                     columns, req_thres, resp_offset, True)
@@ -523,7 +534,7 @@ def print_xpanding_horz(req_tokens_by_type, t_type, max_len, columns, req_thres,
         if t_type == 'html':
             colord_token = "<input type=%s name=%s %s/>" \
                            % ( key, value, ("id=" + rtc.tuple[2]) if len(rtc.tuple) == 3 else '')
-        elif t_type == 'json':
+        elif t_type in ['json', 'jwt_header', 'jwt_payload']:
             colord_token = "%s" % value
         else:
             colord_token = "%s=%s" % (key, value)
@@ -553,7 +564,7 @@ def print_xpanding_vert(req_tokens_by_type, t_type, columns, req_thres, resp_off
     if array_len == 0:
         return
 
-    if t_type == 'json':
+    if t_type in ['json', 'jwt_header', 'jwt_payload']:
         """
         treat whole array as single token, but print line by line and color-highlight
         
@@ -562,7 +573,13 @@ def print_xpanding_vert(req_tokens_by_type, t_type, columns, req_thres, resp_off
         """
         saphireTime_of_source_request = req_tokens_by_type[t_type][0].time
         source_request = [ r for r in req_resp if r['saphireTime']==saphireTime_of_source_request ][0]
-        full_json = source_request['response']['saphireJson']
+        full_json = object()
+        if   t_type == 'json':
+            full_json = source_request['response']['saphireJson']
+        elif t_type == 'jwt_header':
+            full_json = source_request['saphireJWT']['header']
+        elif t_type == 'jwt_payload':
+            full_json = source_request['saphireJWT']['payload']
                                                                     # pretty_print the full json object from the calling request
         string_io = [ sl for sl in StringIO.StringIO( pprint.pformat(full_json) )]
         for j in range(len(string_io)):
@@ -573,7 +590,6 @@ def print_xpanding_vert(req_tokens_by_type, t_type, columns, req_thres, resp_off
                     if rtc.fcolor and rtc.tuple[1] in repr_line:
                         colord_token = termcolor.colored(rtc.tuple[1], rtc.fcolor)
                         repr_line = repr_line.replace(rtc.tuple[1], colord_token)
-                        break
 
             line = "%10s|" % ' '
             if j == 0:                                              # special care for the first line
@@ -814,6 +830,7 @@ def is_b64encoded(text):
 
 
 def jwt_decode(text):
+    global JWT_HEADER_TAG, JWT_PAYLOAD_TAG
     """
     Custom method to decode JWT without signature verification.
 
@@ -821,8 +838,8 @@ def jwt_decode(text):
     here we don't know what to expect so e.g. non-unicode characters could be encountered
     """
     parts = text.split('.')
-    ret =  u'HEADER='+ unicode(base64.urlsafe_b64decode(str(parts[0]+'===')), errors='ignore') + u', '
-    ret += u'PAYLOAD=' + unicode(base64.urlsafe_b64decode(str(parts[1]+'===')), errors='ignore')
+    ret =  JWT_HEADER_TAG+ unicode(base64.urlsafe_b64decode(str(parts[0]+'===')), errors='ignore')
+    ret += JWT_PAYLOAD_TAG + unicode(base64.urlsafe_b64decode(str(parts[1]+'===')), errors='ignore')
     return ret
 
 
@@ -887,12 +904,19 @@ color_opt = COLOR_OPTS[2]
 (XPAND_HORZ, XPAND_VERT)= ('h','v')
 xpand = XPAND_VERT
 
+JWT_PAYLOAD_TAG = u', PAYLOAD='
+JWT_HEADER_TAG  = u'JWT:HEADER='
 
 class Token:
     fg_colors = [ 'red', 'green', 'yellow', 
                  'blue', 'magenta', 'cyan', 'white']
     bg_colors = [ 'on_'+fc for fc in fg_colors ]
-    types = ['url', 'cookie', 'set_cookie', 'req_header', 'rsp_header', 'form', 'json', 'html']
+    types = ['url',
+             'cookie',     'set_cookie',
+             'req_header', 'rsp_header',
+             'form',
+             'json', 'jwt_header', 'jwt_payload',
+             'html']
     fc = 0                                                          # static =class-scoped counter for fg color idx in array
 
     def __init__(self, ttype, ttime, ttuple):
@@ -932,8 +956,8 @@ class Token:
 
         ##### Smart decoding
 
-        key =   smart_decode(self.tuple[0]) if smart_decoding and self.tuple[0] else self.tuple[0]
-        value = smart_decode(self.tuple[1]) if smart_decoding and self.tuple[1] else self.tuple[1]
+        key =   self.smart_decode(self.tuple[0]) if smart_decoding and self.tuple[0] else self.tuple[0]
+        value = self.smart_decode(self.tuple[1]) if smart_decoding and self.tuple[1] else self.tuple[1]
 
         self.tuple = (key, value) if len(self.tuple)==2 else (key, value, self.tuple[2])
 
@@ -975,69 +999,106 @@ class Token:
 
 
 
+    def smart_decode(self, text):
+        global JWT_HEADER_TAG, JWT_PAYLOAD_TAG
+        """
+        Recursively decode the tuple of the current token.
+        Highlight the value on certain cases.
+    
+        By the time the tokens' key/value come here the final
+        coloring has been settled and we can procceed with bg "marker"
+            to note b64 / gzip encoding
+        but with the more common ones:
+            not to spam  url / html
+    
+        :param text: to be decoded and bg-colored
+        """
+        orig_text = text
+        transformation_chain = ''
+        for i in range(100):
+            did_transformation = False
+            if is_urlencoded(text)==1:                              # 1. URL encoding
+                text = urldecode(text)
+                transformation_chain += 'url '
+                did_transformation = True
+    
+    
+            if 'yes' in is_b64encoded(text):                        # 2. Base 64
+                text = base64decode(text)
+                transformation_chain += 'b64 '
+                did_transformation = True
+                if color_opt!=COLOR_OPTS[0]:
+                    text = termcolor.colored(text, attrs=['underline'])
+    
+    
+            if is_timestamp(text):                                  # 3. Timestamp
+                text = timestamp_to_hartime(text)
+                transformation_chain += 'timestamp '
+                did_transformation = False                          # decode no further
+                if color_opt!=COLOR_OPTS[0]:
+                    text = termcolor.colored(text, attrs=['underline'])
+    
+    
+            if is_jwt(text):                                        # 4. JSON Web Token
+                text = jwt_decode(text)
+                jwt_header  = text.split(JWT_PAYLOAD_TAG)[0].replace(JWT_HEADER_TAG,'')
+                jwt_payload = text.split(JWT_PAYLOAD_TAG)[1]
+                source_request = [ r for r in req_resp if r['saphireTime']==self.time ][0]
+                                                                    # find token's origin request, by its time
+                source_request['saphireJWT'] = {}                   # set the 2 dicts, will be recognized() later...
+                try:
+                    source_request['saphireJWT']['header']  = json.loads(jwt_header)
+                except ValueError:                                  # no valid json in JWT, never mind
+                    pass
+                try:
+                    source_request['saphireJWT']['payload'] = json.loads(jwt_payload)
+                except ValueError:
+                    pass
+
+                transformation_chain += 'jwt '
+                did_transformation = True
+                if color_opt != COLOR_OPTS[0]:
+                    text = termcolor.colored(text, attrs=['underline'])
+
+
+            if did_transformation == False:
+                break
+    
+        if debug and transformation_chain:
+            try:
+                print "[+] Applied transformations: %s. '%s' -> '%s'" % (transformation_chain, orig_text, text)
+            except UnicodeDecodeError:
+                pass
+    
+        return text
 
 
 
-def smart_decode(string):
+
+
+def tokenize_json(json_dict, token_type, token_time):
+    global tokens
     """
-    Recursively decode and highlight the output on certain cases.
+    :param json_dict: Python object to walk
+    and make a new token for every item
 
-    By the time the tokens' key/value come here the final
-    coloring has been settled and we can procceed with bg "marker"
-        to note b64 / gzip encoding
-    but with the more common ones:
-        not to spam  url / html
+    :param token_type: The type for the token to create
+    :param token_time: The saphireTime for the token to create
 
-    :param string: to be decoded and bg-colored
+    :return The number of tokens recognized 
     """
-    orig_string = string
-    transformation_chain = ''
-    for i in range(100):
-        did_transformation = False
-        if is_urlencoded(string)==1:                                # 1. URL encoding
-            string = urldecode(string)
-            transformation_chain += 'url '
-            did_transformation = True
+    recognized = 0
 
-
-        if 'yes' in is_b64encoded(string):                          # 2. Base 64
-            string = base64decode(string)
-            transformation_chain += 'b64 '
-            did_transformation = True
-            if color_opt!=COLOR_OPTS[0]:
-                string = termcolor.colored(string, attrs=['underline'])
-
-
-        if is_timestamp(string):                                    # 3. Timestamp
-            string = timestamp_to_hartime(string)
-            transformation_chain += 'timestamp '
-            did_transformation = False                              # decode no further
-            if color_opt!=COLOR_OPTS[0]:
-                string = termcolor.colored(string, attrs=['underline'])
-
-
-        if is_jwt(string):                                          # 4. JSON Web Token
-            string = jwt_decode(string)
-            transformation_chain += 'jwt '
-            did_transformation = True
-            if color_opt!=COLOR_OPTS[0]:
-                string = termcolor.colored(string, attrs=['underline'])
-
-
-
-        if did_transformation == False:
-            break
-
-    if debug and transformation_chain:
-        try:
-            print "[+] Applied transformations: %s. '%s' -> '%s'" % (transformation_chain, orig_string, string)
-        except UnicodeDecodeError:
-            pass
-
-    return string
-
-
-
+    all_strings = []
+    walk(json_dict, all_strings)  # break the dict
+    all_strings = list(set(all_strings))  # unique-ify
+    for el in all_strings:
+        if isinstance(el, bool):
+            continue  # ignore True/False
+        t = Token(token_type, token_time, ('', unicode(el)))
+        t.match_and_insert(tokens)
+        recognized += 1
+    return recognized
 
 
 
