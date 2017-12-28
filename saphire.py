@@ -273,19 +273,32 @@ def recognize_tokens():
 
         try:
             ###### JWTs                                             # discovered from match_and_insert > smart_decode call from the prev. ones
-            jwt_header  = e['saphireJWT']['header']
+            jwt_header  = e['request']['saphireJWT']['header']
             count =  tokenize_json(jwt_header, 'jwt_header', e['saphireTime'])
             recognized += count
         except KeyError:
             pass
 
         try:
-            jwt_payload = e['saphireJWT']['payload']
+            jwt_payload = e['request']['saphireJWT']['payload']
             count = tokenize_json(jwt_payload, 'jwt_payload', e['saphireTime'])
             recognized += count
         except KeyError:
             pass
 
+        try:
+            jwt_header = e['response']['saphireJWT']['header']
+            count = tokenize_json(jwt_header, 'jwt_header', e['saphireTime'])
+            recognized += count
+        except KeyError:
+            pass
+
+        try:
+            jwt_payload = e['response']['saphireJWT']['payload']
+            count = tokenize_json(jwt_payload, 'jwt_payload', e['saphireTime'])
+            recognized += count
+        except KeyError:
+            pass
 
 
         if debug:
@@ -495,7 +508,7 @@ def flow_print():
         fit_print(line,resp_offset, columns-2)
         fit_print('-'*500, resp_offset, columns-2)
 
-        for t_type in ['rsp_header','set_cookie','json','html']:
+        for t_type in ['rsp_header','set_cookie','json','html', 'jwt_header', 'jwt_payload']:
             if xpand == XPAND_HORZ:
                 print_xpanding_horz(req_tokens_by_type, t_type, max_len,
                                     columns, req_thres, resp_offset, False)
@@ -572,14 +585,16 @@ def print_xpanding_vert(req_tokens_by_type, t_type, columns, req_thres, resp_off
             print line
         """
         saphireTime_of_source_request = req_tokens_by_type[t_type][0].time
-        source_request = [ r for r in req_resp if r['saphireTime']==saphireTime_of_source_request ][0]
+        e = [ r for r in req_resp if r['saphireTime']==saphireTime_of_source_request ][0]
         full_json = object()
         if   t_type == 'json':
-            full_json = source_request['response']['saphireJson']
-        elif t_type == 'jwt_header':
-            full_json = source_request['saphireJWT']['header']
-        elif t_type == 'jwt_payload':
-            full_json = source_request['saphireJWT']['payload']
+            full_json = e['response']['saphireJson']
+        else:
+            e = e['request'] if is_request else e['response']
+            try:
+                full_json = e['saphireJWT']['header'] if t_type == 'jwt_header' else e['saphireJWT']['payload']
+            except KeyError:
+                return
                                                                     # pretty_print the full json object from the calling request
         string_io = [ sl for sl in StringIO.StringIO( pprint.pformat(full_json) )]
         for j in range(len(string_io)):
@@ -588,6 +603,10 @@ def print_xpanding_vert(req_tokens_by_type, t_type, columns, req_thres, resp_off
             if color_opt != COLOR_OPTS[0]:
                 for rtc in req_tokens_by_type[t_type]:             # search in json tokens and color inside the pretty_print
                     if rtc.fcolor and rtc.tuple[1] in repr_line:
+
+                        if rtc.tuple[1] in ' '.join(COLOR_PREFIXES+COLOR_ATTR_PREFIXES):
+                            continue                                # Don't recolor the color sequences!
+
                         colord_token = termcolor.colored(rtc.tuple[1], rtc.fcolor)
                         repr_line = repr_line.replace(rtc.tuple[1], colord_token)
 
@@ -754,12 +773,13 @@ def is_jwt(text):
     for p in parts:
         p += '==='                                                  # less padding throws Error but more padding is OK
         try:
-            decoded = base64.urlsafe_b64decode( str(p) )
+            decoded = unicode(base64.urlsafe_b64decode( str(p) ), errors='ignore')
             if p == parts[0]+'===' and len([c for c in decoded if c not in string.printable]) > 0:
                 return False
         except TypeError:
             return False
-
+        except UnicodeEncodeError:
+            return False
     return True
 
 
@@ -1043,15 +1063,20 @@ class Token:
                 text = jwt_decode(text)
                 jwt_header  = text.split(JWT_PAYLOAD_TAG)[0].replace(JWT_HEADER_TAG,'')
                 jwt_payload = text.split(JWT_PAYLOAD_TAG)[1]
-                source_request = [ r for r in req_resp if r['saphireTime']==self.time ][0]
+                e = [ r for r in req_resp if r['saphireTime']==self.time ][0]
                                                                     # find token's origin request, by its time
-                source_request['saphireJWT'] = {}                   # set the 2 dicts, will be recognized() later...
+                if self.type in ['url','cookie','req_header','form']:
+                    e = e['request']                                # was the JWT found in the request or the response?
+                else:
+                    e = e['response']
+
+                e['saphireJWT'] = {}                                # set the 2 dicts, will be recognized() later...
                 try:
-                    source_request['saphireJWT']['header']  = json.loads(jwt_header)
+                    e['saphireJWT']['header']  = json.loads(jwt_header)
                 except ValueError:                                  # no valid json in JWT, never mind
                     pass
                 try:
-                    source_request['saphireJWT']['payload'] = json.loads(jwt_payload)
+                    e['saphireJWT']['payload'] = json.loads(jwt_payload)
                 except ValueError:
                     pass
 
