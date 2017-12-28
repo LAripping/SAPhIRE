@@ -2,10 +2,10 @@
 #encoding=utf8
 
 import base64
-import sys
 import json
 import urllib
 import urlparse
+import jwt
 import termcolor
 import os
 import string
@@ -218,7 +218,7 @@ def recognize_tokens():
         try:
             ###### json in resp body
             header_values = [ h['value'] for h in e['response']['headers']]
-            for v in header_values:
+            for v in header_values:                                 # TODO parse POST body as well
 
                 if 'application/json' in v \
                         or 'application/x-javascript' in v \
@@ -411,9 +411,12 @@ def fit_print(line, offset, threshold, first_last=False):
 
 
 def flow_print():
-                                                                    # 'stty' trick won't work in the debugger, detect it as explained in the below question instead!
-                                                                    # https://stackoverflow.com/questions/333995/how-to-detect-that-python-code-is-being-executed-through-the-debugger
-    columns = 250 if sys.gettrace() else int(os.popen('stty size', 'r').read().split()[1])
+    columns = 0
+    try:
+        columns = int(os.popen('stty size', 'r').read().split()[1])
+    except IndexError:                                              # if the 'stty' trick won't work inside the IDE (or for any other reason),
+        columns = 250                                               # work around with a fixed value
+
     divider = 50
     if debug:
         ans = raw_input('Enter req/resp divid er pct. (ENTER -> default=50%): ')
@@ -719,6 +722,35 @@ def is_timestamp(ts_string):
 
 
 
+
+def is_jwt(text):
+    """
+    :param text: is inferred as a JWT by it's format:
+    - 3 parts separated by dots
+    - First part (header) MUST decode to a printable string
+    - Each part correctly decodes as Base64Url
+    :return: True / False
+    """
+    parts = text.split('.')
+    if len(parts) != 3:
+        return False
+
+    for p in parts:
+        p += '==='                                                  # less padding throws Error but more padding is OK
+        try:
+            decoded = base64.urlsafe_b64decode( str(p) )
+            if p == parts[0]+'===' and len([c for c in decoded if c not in string.printable]) > 0:
+                return False
+        except TypeError:
+            return False
+
+    return True
+
+
+
+
+
+
 def is_b64encoded(text):
     """
     A string is inferred as base64 encoded, by:
@@ -781,6 +813,17 @@ def is_b64encoded(text):
 
 
 
+def jwt_decode(text):
+    """
+    Custom method to decode JWT without signature verification.
+
+    Existing libraries wouldn't work because they don't support non-standard payloads,
+    here we don't know what to expect so e.g. non-unicode characters could be encountered
+    """
+    parts = text.split('.')
+    ret =  u'HEADER='+ unicode(base64.urlsafe_b64decode(str(parts[0]+'===')), errors='ignore') + u', '
+    ret += u'PAYLOAD=' + unicode(base64.urlsafe_b64decode(str(parts[1]+'===')), errors='ignore')
+    return ret
 
 
 def base64decode(text):
@@ -971,6 +1014,16 @@ def smart_decode(string):
             did_transformation = False                              # decode no further
             if color_opt!=COLOR_OPTS[0]:
                 string = termcolor.colored(string, attrs=['underline'])
+
+
+        if is_jwt(string):                                          # 4. JSON Web Token
+            string = jwt_decode(string)
+            transformation_chain += 'jwt '
+            did_transformation = True
+            if color_opt!=COLOR_OPTS[0]:
+                string = termcolor.colored(string, attrs=['underline'])
+
+
 
         if did_transformation == False:
             break
