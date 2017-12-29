@@ -165,18 +165,28 @@ def recognize_tokens():
         try:
             ###### form fields
             if e['request']['method'] == 'POST':
-                if 'application/x-www-form-urlencoded' in [ h['value'] for h in e['request']['headers'] ]:
-                                                                    # TODO what about application/form-multipart
-                    if e['request']['postData']['params'] != []:
-                        for f in e['request']['postData']['params']:
-                            t = Token('form', e['saphireTime'], (f['name'],f['value']) )
-                            t.match_and_insert(tokens)
-                            recognized += 1
-                    else:
-                        for f in e['request']['postData']['text'].split('&'):
-                            t = Token('form', e['saphireTime'], (f.split('=')[0],f.split('=')[1]) )
-                            t.match_and_insert(tokens)
-                            recognized += 1
+                header_values = [ h['value'] for h in e['response']['headers']]
+                for v in header_values:
+                    if 'application/x-www-form-urlencoded' in v:    # TODO what about application/form-multipart
+                        if e['request']['postData']['params'] != []:
+                            for f in e['request']['postData']['params']:
+                                t = Token('form', e['saphireTime'], (f['name'],f['value']) )
+                                t.match_and_insert(tokens)
+                                recognized += 1
+                        else:
+                            for f in e['request']['postData']['text'].split('&'):
+                                t = Token('form', e['saphireTime'], (f.split('=')[0],f.split('=')[1]) )
+                                t.match_and_insert(tokens)
+                                recognized += 1
+
+                    if   'application/json' in v \
+                      or 'application/x-javascript' in v \
+                      or 'text/javascript' in v:
+                        body = e['request']['postData']['text']
+                        post_json = get_json(body)
+                        e['request']['saphireJson'] = post_json  # add the full dict, might need later...
+                        count = tokenize_json(post_json, 'json', e['saphireTime'])
+                        recognized += count
         except KeyError:
             pass
 
@@ -217,7 +227,7 @@ def recognize_tokens():
         try:
             ###### json in resp body
             header_values = [ h['value'] for h in e['response']['headers']]
-            for v in header_values:                                 # TODO parse POST body as well
+            for v in header_values:
 
                 if 'application/json' in v \
                         or 'application/x-javascript' in v \
@@ -489,7 +499,7 @@ def flow_print():
         fit_print(line, 0, req_thres)
 
         fit_print('-'*10 + '+' + '-'*500, 0, req_thres)
-        for t_type in ['url', 'cookie', 'req_header', 'form','jwt_header', 'jwt_payload']:
+        for t_type in ['url','cookie','req_header','form','json','jwt_header','jwt_payload']:
             if xpand == XPAND_HORZ:
                 print_xpanding_horz(req_tokens_by_type, t_type, max_len,
                                     columns, req_thres, resp_offset, True)
@@ -578,17 +588,15 @@ def print_xpanding_vert(req_tokens_by_type, t_type, columns, req_thres, resp_off
         return
 
     if t_type in ['json', 'jwt_header', 'jwt_payload']:
-        """
-        treat whole array as single token, but print line by line and color-highlight
-        
-        for line in StringIO(  pprint.pformat(json.loads(s2[5:])) ):
-            print line
-        """
+        """treat whole array as single token, but print line by line and color-highlight"""
         saphireTime_of_source_request = req_tokens_by_type[t_type][0].time
         e = [ r for r in req_resp if r['saphireTime']==saphireTime_of_source_request ][0]
         full_json = object()
         if   t_type == 'json':
-            full_json = e['response']['saphireJson']
+            try:
+                full_json = e['request']['saphireJson'] if is_request else e['response']['saphireJson']
+            except KeyError:
+                return
         else:
             e = e['request'] if is_request else e['response']
             try:
@@ -599,6 +607,9 @@ def print_xpanding_vert(req_tokens_by_type, t_type, columns, req_thres, resp_off
         string_io = [ sl for sl in StringIO.StringIO( pprint.pformat(full_json) )]
         for j in range(len(string_io)):
             repr_line = string_io[j]
+
+            for m in re.findall(r"u'[^']*'", repr_line):
+                repr_line = repr_line.replace(m, m[1:])             # strip the unicode tags from u'XXX'
 
             if color_opt != COLOR_OPTS[0]:
                 for rtc in req_tokens_by_type[t_type]:             # search in json tokens and color inside the pretty_print
@@ -617,7 +628,6 @@ def print_xpanding_vert(req_tokens_by_type, t_type, columns, req_thres, resp_off
                 fit_print(line + repr_line, 0, req_thres)
             else:
                 fit_print(line + repr_line, resp_offset, columns - 2)
-            # TODO strip u'' tags (anything else?)
         return
 
 
@@ -774,8 +784,9 @@ def is_jwt(text):
         p += '==='                                                  # less padding throws Error but more padding is OK
         try:
             decoded = unicode(base64.urlsafe_b64decode( str(p) ), errors='ignore')
-            if p == parts[0]+'===' and len([c for c in decoded if c not in string.printable]) > 0:
-                return False
+            if p == parts[0]+'===':
+                if len(decoded)<6 or len([c for c in decoded if c not in string.printable]) > 0:
+                    return False
         except TypeError:
             return False
         except UnicodeEncodeError:
