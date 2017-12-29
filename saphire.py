@@ -530,6 +530,12 @@ def flow_print():
         fit_print('_'*500, resp_offset, columns-2,True)
         print '\n'
 
+        if interact:
+            # TODO add clause for curl-generation when implemented
+            if i < len(req_resp)-1 :
+                _ = raw_input('Press any key to continue... ')
+
+
 
 def print_xpanding_horz(req_tokens_by_type, t_type, max_len, columns, req_thres, resp_offset, is_request):
     """
@@ -927,6 +933,7 @@ req_resp = []
 tokens = []
 harfile_pagetime = ''
 debug = False
+interact = False
 smart_decoding = True
 
 COLOR_OPTS=['off','by-type','try-match','try-match-all']
@@ -1196,6 +1203,7 @@ if __name__ == "__main__":                                          # TODO split
     parser.add_argument("-x","--expand", choices=['h','v'],
                         help="dimension to expand the list of tokens per-category: h=Horizontally, v=Vertically. See README for more")
     parser.add_argument("-s", "--nosmart", help="turnoff smart decoding", action="store_true")
+    parser.add_argument("-i", "--interactive", help="don't flood the terminal, print each req/resp pairs on user's prompt", action="store_true")
 
 
     args = parser.parse_args()
@@ -1207,6 +1215,8 @@ if __name__ == "__main__":                                          # TODO split
         xpand = args.expand
     if args.nosmart:
         smart_decoding = False
+    if args.interactive:
+        interact = True
 
     isolate_requests( args.harfile )
     set_saphireTimes()                                   # make new field with unique timestamp
