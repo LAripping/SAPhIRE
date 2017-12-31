@@ -110,7 +110,7 @@ def recognize_tokens():
         try:
             ###### form fields
             if e['request']['method'] == 'POST':
-                header_values = [ h['value'] for h in e['response']['headers']]
+                header_values = [ h['value'] for h in e['request']['headers']]
                 for v in header_values:
                     if 'application/x-www-form-urlencoded' in v:    # TODO what about application/form-multipart
                         if e['request']['postData']['params'] != []:
