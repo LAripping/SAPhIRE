@@ -16,7 +16,7 @@ class Token:
              'form',
              'json', 'jwt_header', 'jwt_payload',
              'html']
-    fc = 0  # static =class-scoped counter for fg color idx in array
+    fc = 0                                                          # static =class-scoped counter for fg color idx in array
 
 
 
@@ -29,7 +29,7 @@ class Token:
         self.type = ttype
         self.time = ttime  # saphireTime
         self.fcolor = ''
-        if global_vars.color_opt == global_vars.COLOR_OPTS[1]:  # "by-type" : loop colors for same-typed tokens,
+        if global_vars.color_opt == global_vars.COLOR_OPTS[1]:      # "by-type" : loop colors for same-typed tokens,
             bc = Token.types.index(ttype) % len(Token.bg_colors)
             self.bcolor = Token.bg_colors[bc]
 
@@ -76,7 +76,7 @@ class Token:
         self.tuple = (key, value) if len(self.tuple) == 2 else (key, value, self.tuple[2])
 
         ##### Match Coloring
-        if self.type != 'html':  # Don't color 'html' <input fields
+        if self.type != 'html':                                     # Don't color 'html' <input fields
             if global_vars.color_opt == global_vars.COLOR_OPTS[3]:
                 """ try-match-all : If found use same color, but all new tokens get colored"""
                 found = False
@@ -100,8 +100,8 @@ class Token:
                         if t.fcolor:
                             self.fcolor = t.fcolor
                         else:
-                            self.fcolor = Token.fg_colors[Token.fc]  # new color for both New...
-                            t.fcolor = self.fcolor  # ...and Old
+                            self.fcolor = Token.fg_colors[Token.fc] # new color for both New...
+                            t.fcolor = self.fcolor                  # ...and Old
                             Token.fc = (Token.fc + 1) % len(Token.fg_colors)
 
                 if not found:
@@ -132,40 +132,40 @@ class Token:
         transformation_chain = ''
         for i in range(100):
             did_transformation = False
-            if smart_decoder.is_urlencoded(text) == 1:  # 1. URL encoding
+            if smart_decoder.is_urlencoded(text) == 1:              # 1. URL encoding
                 text = smart_decoder.urldecode(text)
                 transformation_chain += 'url '
                 did_transformation = True
 
-            if 'yes' in smart_decoder.is_b64encoded(text):  # 2. Base 64
+            if 'yes' in smart_decoder.is_b64encoded(text):          # 2. Base 64
                 text = smart_decoder.base64decode(text)
                 transformation_chain += 'b64 '
                 did_transformation = True
                 if global_vars.color_opt != global_vars.COLOR_OPTS[0]:
                     text = termcolor.colored(text, attrs=['underline'])
 
-            if smart_decoder.is_timestamp(text):  # 3. Timestamp
+            if smart_decoder.is_timestamp(text):                    # 3. Timestamp
                 text = utils.timestamp_to_hartime(text)
                 transformation_chain += 'timestamp '
-                did_transformation = False  # decode no further
+                did_transformation = False                          # decode no further
                 if global_vars.color_opt != global_vars.COLOR_OPTS[0]:
                     text = termcolor.colored(text, attrs=['underline'])
 
-            if smart_decoder.is_jwt(text):  # 4. JSON Web Token
+            if smart_decoder.is_jwt(text):                          # 4. JSON Web Token
                 text = smart_decoder.jwt_decode(text)
                 jwt_header = text.split(global_vars.JWT_PAYLOAD_TAG)[0].replace(global_vars.JWT_HEADER_TAG, '')
                 jwt_payload = text.split(global_vars.JWT_PAYLOAD_TAG)[1]
                 e = [r for r in global_vars.req_resp if r['saphireTime'] == self.time][0]
-                # find token's origin request, by its time
+                                                                    # find token's origin request, by its time
                 if self.type in ['url', 'cookie', 'req_header', 'form']:
-                    e = e['request']  # was the JWT found in the request or the response?
+                    e = e['request']                                # was the JWT found in the request or the response?
                 else:
                     e = e['response']
 
-                e['saphireJWT'] = {}  # set the 2 dicts, will be recognized() later...
+                e['saphireJWT'] = {}                                # set the 2 dicts, will be recognized() later...
                 try:
                     e['saphireJWT']['header'] = json.loads(jwt_header)
-                except ValueError:  # no valid json in JWT, never mind
+                except ValueError:                                  # no valid json in JWT, never mind
                     pass
                 try:
                     e['saphireJWT']['payload'] = json.loads(jwt_payload)

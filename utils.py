@@ -24,11 +24,11 @@ def tokenize_json(json_dict, token_type, token_time):
     recognized = 0
 
     all_strings = []
-    walk(json_dict, all_strings)  # break the dict
-    all_strings = list(set(all_strings))  # unique-ify
+    walk(json_dict, all_strings)                                    # break the dict
+    all_strings = list(set(all_strings))                            # unique-ify
     for el in all_strings:
         if isinstance(el, bool):
-            continue  # ignore True/False
+            continue                                                # ignore True/False
         t = Token.Token(token_type, token_time, ('', unicode(el)))
         t.match_and_insert(global_vars.tokens)
         recognized += 1
@@ -69,8 +69,7 @@ def walk(x,all_strings):
     :param all_strings: the array we incrementally fill with with all tokens
     """
     if isinstance(x, dict):
-        for (k,v) in x.items():
-            # keys must be strings
+        for (k,v) in x.items():                                     # keys must be strings
             all_strings.append(k)
             walk(v,all_strings)
     elif isinstance(x,list) or isinstance(x,tuple):

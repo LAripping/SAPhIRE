@@ -16,8 +16,8 @@ def flow_print():
     columns = 0
     try:
         columns = int(os.popen('stty size', 'r').read().split()[1])
-    except IndexError:  # if the 'stty' trick won't work inside the IDE (or for any other reason),
-        columns = 250  # work around with a fixed value
+    except IndexError:                                              # if the 'stty' trick won't work inside the IDE (or for any other reason),
+        columns = 250                                               # work around with a fixed value
 
     divider = 50
     if global_vars.debug:
@@ -31,23 +31,23 @@ def flow_print():
     if global_vars.debug:
         print "Request-info will span %d/%d chars. Responses start on %d" % (req_thres, columns, resp_offset)
 
-    max_len = 25  # limit the length of tokens displayed, need to print as much as we can
-    if global_vars.xpand == global_vars.XPAND_HORZ:  # only used in XPAND_HORZ
-        if global_vars.debug:  # for a short, cool demonstration. Not the full value of it! (do this later manually)
+    max_len = 25                                                    # limit the length of tokens displayed, need to print as much as we can
+    if global_vars.xpand == global_vars.XPAND_HORZ:                 # only used in XPAND_HORZ
+        if global_vars.debug:                                       # for a short, cool demonstration. Not the full value of it! (do this later manually)
             ans = raw_input('Enter maximum characters of tokens to be shown. (ENTER -> default=25)')
             if ans:
                 max_len = int(ans)
                 print "Max len set to %d" % max_len
 
     for i in range(len(global_vars.req_resp)):
-        e = global_vars.req_resp[i]  # "startedDateTime": "2017-10-30T20:29:41.816Z"
+        e = global_vars.req_resp[i]                                 # "startedDateTime": "2017-10-30T20:29:41.816Z"
         req_tokens_by_type = {}
         for cur_type in Token.Token.types:
-            req_tokens_by_type[cur_type] = []  # will group tokens by type (init arrays)
+            req_tokens_by_type[cur_type] = []                       # will group tokens by type (init arrays)
 
         any_tokens = False
         for t in global_vars.tokens:
-            if t.time == e['saphireTime']:  # filter tokens by request-time (keep only the ones of current global_vars.req_resp)
+            if t.time == e['saphireTime']:                          # filter tokens by request-time (keep only the ones of current global_vars.req_resp)
                 any_tokens = True
                 req_tokens_by_type[t.type].append(t)
 
@@ -128,8 +128,8 @@ def print_xpanding_horz(req_tokens_by_type, t_type, max_len, columns, req_thres,
             colord_token = "%s" % value
         else:
             colord_token = "%s=%s" % (key, value)
-        if color_opt != COLOR_OPTS[0]:
-            if rtc.fcolor:  # in try-match mode some tokens are not colored!
+        if global_vars.color_opt != global_vars.COLOR_OPTS[0]:
+            if rtc.fcolor:                                          # in try-match mode some tokens are not colored!
                 colord_token = termcolor.colored(colord_token, rtc.fcolor)
 
         line += "%s%s" % (colord_token, ' ' if j < array_len - 1 else '')
@@ -170,26 +170,26 @@ def print_xpanding_vert(req_tokens_by_type, t_type, columns, req_thres, resp_off
                 full_json = e['saphireJWT']['header'] if t_type == 'jwt_header' else e['saphireJWT']['payload']
             except KeyError:
                 return
-                # pretty_print the full json object from the calling request
+                                                                    # pretty_print the full json object from the calling request
         string_io = [sl for sl in StringIO.StringIO(pprint.pformat(full_json))]
         for j in range(len(string_io)):
             repr_line = string_io[j]
 
             for m in re.findall(r"u'[^']*'", repr_line):
-                repr_line = repr_line.replace(m, m[1:])  # strip the unicode tags from u'XXX'
+                repr_line = repr_line.replace(m, m[1:])             # strip the unicode tags from u'XXX'
 
             if global_vars.color_opt != global_vars.COLOR_OPTS[0]:
-                for rtc in req_tokens_by_type[t_type]:  # search in json tokens and color inside the pretty_print
+                for rtc in req_tokens_by_type[t_type]:              # search in json tokens and color inside the pretty_print
                     if rtc.fcolor and rtc.tuple[1] in repr_line:
 
                         if rtc.tuple[1] in ' '.join(COLOR_PREFIXES + COLOR_ATTR_PREFIXES):
-                            continue  # Don't recolor the color sequences!
+                            continue                                # Don't recolor the color sequences!
 
                         colord_token = termcolor.colored(rtc.tuple[1], rtc.fcolor)
                         repr_line = repr_line.replace(rtc.tuple[1], colord_token)
 
             line = "%10s|" % ' '
-            if j == 0:  # special care for the first line
+            if j == 0:                                              # special care for the first line
                 line = "%10s|" % t_type
             if is_request:
                 fit_print(line + repr_line, 0, req_thres)
@@ -199,7 +199,7 @@ def print_xpanding_vert(req_tokens_by_type, t_type, columns, req_thres, resp_off
 
     for j in range(array_len):
         line = "%10s|" % ' '
-        if j == 0:  # special care for the first line
+        if j == 0:                                                  # special care for the first line
             line = "%10s|" % t_type
 
         rtc = req_tokens_by_type[t_type][j]
@@ -210,7 +210,7 @@ def print_xpanding_vert(req_tokens_by_type, t_type, columns, req_thres, resp_off
         else:
             colord_token = "%s=%s" % (rtc.tuple[0], rtc.tuple[1])
         if global_vars.color_opt != global_vars.COLOR_OPTS[0]:
-            if rtc.fcolor:  # in try-match mode some tokens are not colored!
+            if rtc.fcolor:                                          # in try-match mode some tokens are not colored!
                 colord_token = termcolor.colored(colord_token, rtc.fcolor)
 
         if is_request:
@@ -219,8 +219,8 @@ def print_xpanding_vert(req_tokens_by_type, t_type, columns, req_thres, resp_off
             fit_print(line + colord_token, resp_offset, columns - 2)
 
 
-COLOR_PREFIXES = ["\033[%dm" % n for n in range(30, 48)]  # colors like 'red'
-COLOR_ATTR_PREFIXES = ["\033[%dm" % n for n in range(1, 9)]  # attrs like 'underline'
+COLOR_PREFIXES = ["\033[%dm" % n for n in range(30, 48)]            # colors like 'red'
+COLOR_ATTR_PREFIXES = ["\033[%dm" % n for n in range(1, 9)]         # attrs like 'underline'
 def is_colored(text):
     for pre in COLOR_PREFIXES + COLOR_ATTR_PREFIXES:
         if pre in text:

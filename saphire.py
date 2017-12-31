@@ -20,15 +20,15 @@ def isolate_requests(har_file):
     har = {}
     with open(har_file) as harfile:
         har = json.load( harfile )
-        global_vars.harfile_pagetime = har['log']['pages'][0]['startedDateTime']    # needed later on
-
+        global_vars.harfile_pagetime = har['log']['pages'][0]['startedDateTime']
+                                                                    # needed later on
     global_vars.req_resp = har['log']['entries']
     if global_vars.debug:
         print "[+] Read %d entries" % len(global_vars.req_resp)
 
     fdomain = raw_input("Filter by domain? (ENTER for no): ")
     if fdomain:
-        for e in list(global_vars.req_resp):                                    # iterating over a copy
+        for e in list(global_vars.req_resp):                        # iterating over a copy
             u = urlparse.urlparse(e['request']['url'])
             if fdomain not in u.netloc+u.path:
                 global_vars.req_resp.remove(e)
@@ -302,13 +302,13 @@ if __name__ == "__main__":                                          # TODO split
     if args.debug:
         global_vars.debug = True
     if args.color != None :
-        color_opt = COLOR_OPTS[args.color]
+        global_vars.color_opt = global_vars.COLOR_OPTS[args.color]
     if args.expand:
-        xpand = args.expand
+        global_vars.xpand = args.expand
     if args.nosmart:
-        smart_decoding = False
+        global_vars.smart_decoding = False
     if args.interactive:
-        interact = True
+        global_vars.interact = True
 
     isolate_requests( args.harfile )
     set_saphireTimes()                                              # make new field with unique timestamp
