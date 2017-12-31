@@ -73,7 +73,7 @@ Go ahead and visit a production site you always wanted to script! First manually
 
 
 
-\* The tool was originally developed and tested with Chrome, but after many indications, I realized it hides important form parameters from HAR files (as well as `curl` dumps). Mozilla Firefox instead revealed everything. For more see Issue #11  
+\* Other browsers supported, but Firefox is recommended, see FAQ #1
 
 
 
@@ -93,6 +93,8 @@ Go ahead and visit a production site you always wanted to script! First manually
 
 
 `-s, --nosmart` don't attempt any smart decoding. Useful in (rare) cases it messes up
+
+`-i, --interactive` print requests/responses one pair at a time, instead of flooding the terminal
 
 `-x, --expand` Specify how to spread the different tokens of each category (meaningful only in flow_print mode) Possible Values:
 
@@ -138,3 +140,19 @@ Go ahead and visit a production site you always wanted to script! First manually
 
 
 ```
+
+
+
+
+
+
+
+## FAQ
+
+1. *I can't extract the HAR file from my browser!*
+
+   Under certain circumstances, when pressing "Save All as HAR" on Firefox's debugger, nothing happens. I have reached the conclusion that this occurs because of **ongoing XHR requests** , and when they are canceled/completed the action can be succesfully repeated. So as a solution, disconnect from the network to cancel any hang requests. An example of this is [Facebook's HTTP Long Polling](https://stackoverflow.com/questions/2663882/how-does-facebook-chat-avoid-continuous-polling-of-the-server) 
+
+2. *The sensitive info transferred do not appear in the HAR!* 
+
+   **Use Firefox** to extract the HAR file of the flow. The tool was originally developed and tested with Chrome, but after many indications, I realized it hides important form parameters from HAR files (as well as `curl` dumps). Mozilla Firefox instead revealed everything. For more see Issue #11  
