@@ -1,5 +1,9 @@
 *.swo
 *.swp
+.~lock*
 .idea/
-nonpublicTODOS.*
+nonpublicTODOs.*
 *.har
+*.pyc
+venv
+.venv
