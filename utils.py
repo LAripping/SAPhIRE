@@ -1,9 +1,23 @@
 import time
 import re
 import json
+import urlparse
 
 import global_vars
 import Token
+
+
+def filter_by(fdomain):
+    """
+    :param fdomain: If this value is not found in the URl of any request, remove it
+    """
+    for e in list(global_vars.req_resp):
+        u = urlparse.urlparse(e['request']['url'])
+        if fdomain not in u.netloc + u.path:
+            global_vars.req_resp.remove(e)
+            if global_vars.debug:
+                print '[+] Filtered out entry with url: %s' % u.netloc + u.path
+
 
 
 def sort_list_of_dicts_by_key(list, dictkey):

@@ -9,6 +9,7 @@ import re
 import argparse
 import bs4
 
+import conf
 import utils
 import global_vars
 from flow_print_impl import *
@@ -26,14 +27,18 @@ def isolate_requests(har_file):
     if global_vars.debug:
         print "[+] Read %d entries" % len(global_vars.req_resp)
 
-    fdomain = raw_input("Filter by domain? (ENTER for no): ")
-    if fdomain:
-        for e in list(global_vars.req_resp):                        # iterating over a copy
-            u = urlparse.urlparse(e['request']['url'])
-            if fdomain not in u.netloc+u.path:
-                global_vars.req_resp.remove(e)
-                if global_vars.debug:
-                    print '[+] Filtered out entry with url: %s' % u.netloc+u.path
+    if conf.domains == []:
+        fdomain = raw_input("Filter by domain? (ENTER for no): ")
+        if fdomain:
+            utils.filter_by(fdomain)
+    else:
+        print "[c] Read %d domains to filter on" % len(conf.domains)    # TODO search_all [c] when patching #25
+        for fdomain in conf.domains:
+            utils.filter_by(fdomain)
+
+
+
+
 
 
 

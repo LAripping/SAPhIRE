@@ -143,6 +143,12 @@ Go ahead and visit a production site you always wanted to script! First manually
 
 
 
+### Config file
+
+For more advanced use-cases, more fine-grained configurations can be specified in the `conf.py` file in the same directory, which is *always* parsed at runtime. Read the file for an explanation of the options (currently and to-be) supported.
+
+
+
 
 
 
