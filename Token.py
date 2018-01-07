@@ -4,6 +4,7 @@ import json
 import utils
 import smart_decoder
 import global_vars
+import conf
 
 
 class Token:
@@ -69,9 +70,11 @@ class Token:
         """
 
         ##### Smart decoding
-
-        key = self.smart_decode(self.tuple[0]) if global_vars.smart_decoding and self.tuple[0] else self.tuple[0]
-        value = self.smart_decode(self.tuple[1]) if global_vars.smart_decoding and self.tuple[1] else self.tuple[1]
+        do_decode = self.tuple[0] not in conf.no_decode_keys and self.tuple[1] not in conf.no_decode
+        decode_key   = self.tuple[0] and global_vars.smart_decoding and do_decode
+        decode_value = self.tuple[1] and global_vars.smart_decoding and do_decode
+        key   = self.smart_decode(self.tuple[0]) if decode_key   else self.tuple[0]
+        value = self.smart_decode(self.tuple[1]) if decode_value else self.tuple[1]
 
         self.tuple = (key, value) if len(self.tuple) == 2 else (key, value, self.tuple[2])
 

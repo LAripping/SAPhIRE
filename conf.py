@@ -9,6 +9,19 @@ domains = [
     # '/api/session'
 ]
 
+
+
+##### FORCE NOT DECODE
+# never smart-decode the (values of) tokens with following keys/values
+# useful for ones that smart-decoder mistakenly identified as e.g. base64 / timstamps and messed ud
+no_decode = [
+    '1512588272587',
+]
+
+no_decode_keys = [
+    'x-fb-debug',
+]
+
 ################ Following conf options not yet suported. Sorry :P
 
 ##### FORCE DECODE
@@ -29,16 +42,7 @@ keys_of_b64_tokens = [
 
 
 
-##### FORCE NOT DECODE
-# never smart-decode the tokens with following keys/values
-# useful for ones that smart-decoder mistakenly identified as e.g. base64 / timstamps and messed ud
-no_decode = [
-    '1512588272587'
-]
 
-no_decode_keys = [
-    'x-fb-debug',
-]
 
 
 
