@@ -125,7 +125,8 @@ def recognize_tokens():
                                 recognized += 1
                         else:
                             for f in e['request']['postData']['text'].split('&'):
-                                t = Token('form', e['saphireTime'], (f.split('=')[0], f.split('=')[1]))
+                                ttuple = (f.split('=')[0], f.split('=')[1]) if '=' in f else ('',f)
+                                t = Token('form', e['saphireTime'], ttuple)
                                 t.match_and_insert(global_vars.tokens)
                                 recognized += 1
 

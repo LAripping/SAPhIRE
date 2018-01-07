@@ -24,6 +24,16 @@ class Token:
 
 
     def __init__(self, ttype, ttime, ttuple):
+        """
+        Token() constructor
+        :param ttype: A value from the types list in the attribute
+        :param ttime: The saphireTime of the request that contains it (Foreign Key - like)
+        :param ttuple: Could be one of:
+            - (key,value)
+            - (type,name,id)    for some 'html' type of Tokens
+            - (type,name)       for some 'html' type of Tokens
+            - ('', value)       for 'json' and some 'form' type Tokens
+        """
         self.tuple = ttuple
         if ttype not in Token.types:
             exit('Unsupported type \'' + ttype + '\'!')
@@ -79,7 +89,7 @@ class Token:
         self.tuple = (key, value) if len(self.tuple) == 2 else (key, value, self.tuple[2])
 
         ##### Match Coloring
-        if self.type != 'html':                                     # Don't color 'html' <input fields
+        if self.type != 'html' and self.tuple[1]:                   # Don't color 'html' <input fields or empty tokens
             if global_vars.color_opt == global_vars.COLOR_OPTS[3]:
                 """ try-match-all : If found use same color, but all new tokens get colored"""
                 found = False

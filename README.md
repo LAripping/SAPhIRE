@@ -157,7 +157,12 @@ For more advanced use-cases, more fine-grained configurations can be specified i
 
 1. *I can't extract the HAR file from my browser!*
 
-   Under certain circumstances, when pressing "Save All as HAR" on Firefox's debugger, nothing happens. I have reached the conclusion that this occurs because of **ongoing XHR requests** , and when they are canceled/completed the action can be succesfully repeated. So as a solution, disconnect from the network to cancel any hang requests. An example of this is [Facebook's HTTP Long Polling](https://stackoverflow.com/questions/2663882/how-does-facebook-chat-avoid-continuous-polling-of-the-server) 
+   Under certain circumstances, when pressing "Save All as HAR" on Firefox's debugger, nothing happens. I have reached the conclusion that this occurs because of **ongoing XHR requests** , and when they are canceled/completed the action can be succesfully repeated. An example of this is [Facebook's HTTP Long Polling](https://stackoverflow.com/questions/2663882/how-does-facebook-chat-avoid-continuous-polling-of-the-server). Stoping the page from loading usually is not an option, and even loading a new page will leave them hanging in the Debugger. Disconnecting from the network won't fix the problem for the same reason, so the only solution is the following:
+
+   * Click the stacktrace of the call (in the request tab) to navigate to the statement responsible
+   * Pretty print to better locate it in a single line
+   * Add a breakpoint so that execution will pause before even commencing the request
+   * Refresh / Repeat the proccess
 
 2. *The sensitive info transferred do not appear in the HAR!* 
 
