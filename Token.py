@@ -145,6 +145,15 @@ class Token:
         transformation_chain = ''
         for i in range(100):
             did_transformation = False
+
+            if text in conf.b64_tokens                             \
+            or self.tuple[0] in conf.keys_of_b64_tokens and text==self.tuple[1]:
+                text = smart_decoder.base64decode(text)             # 0. Explicit rule > b64
+                transformation_chain += 'b64 '
+                did_transformation = True
+                if global_vars.color_opt != global_vars.COLOR_OPTS[0]:
+                    text = termcolor.colored(text, attrs=['underline'])
+
             if smart_decoder.is_urlencoded(text) == 1:              # 1. URL encoding
                 text = smart_decoder.urldecode(text)
                 transformation_chain += 'url '

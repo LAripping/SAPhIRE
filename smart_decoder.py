@@ -6,7 +6,7 @@ import enchant.tokenize
 import unicodedata
 
 
-
+import conf
 from utils import *
 import global_vars
 import flow_print_impl
@@ -116,11 +116,7 @@ def is_jwt(text):
 
 def is_b64encoded(text):
     """
-    A string is inferred as base64 encoded, by:
-
-     Red flags are:
-    - non base64 alphabet
-    - it fails to decode
+    A string is inferred as base64 encoded if it:
 
     - has valid words
     - Short- or odd-length'ed strings
@@ -128,6 +124,10 @@ def is_b64encoded(text):
     - Strings with not-low frequency of symbols
     (biggest index => require most aces in bytes => most rare in plaintext)
     - Only hex chars (chars same case and less than f)
+
+    Red flags that are checked first are:
+    - non base64 alphabet
+    - it fails to decode
 
     :returns one of
         'no' if it's not a valid b64 code

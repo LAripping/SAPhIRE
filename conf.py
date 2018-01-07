@@ -22,7 +22,7 @@ no_decode_keys = [
     'x-fb-debug',
 ]
 
-################ Following conf options not yet suported. Sorry :P
+
 
 ##### FORCE DECODE
 # for tokens with the following values that should always be
@@ -40,11 +40,7 @@ keys_of_b64_tokens = [
     # 'PHPSESSID',
 ]
 
-
-
-
-
-
+################ Following conf options not yet suported. Sorry :P
 
 ##### IGNORE TOKENS
 # don't bother smart-decoding / parsing / matching / coloring tokens
