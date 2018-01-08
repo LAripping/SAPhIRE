@@ -128,7 +128,7 @@ def print_xpanding_horz(req_tokens_by_type, t_type, max_len, columns, req_thres,
             colord_token = "%s" % value
         else:
             colord_token = "%s=%s" % (key, value)
-        if global_vars.color_opt != global_vars.COLOR_OPTS[0]:
+        if global_vars.coloring:
             if rtc.fcolor:                                          # in try-match mode some tokens are not colored!
                 colord_token = termcolor.colored(colord_token, rtc.fcolor)
 
@@ -178,7 +178,7 @@ def print_xpanding_vert(req_tokens_by_type, t_type, columns, req_thres, resp_off
             for m in re.findall(r"u'[^']*'", repr_line):
                 repr_line = repr_line.replace(m, m[1:])             # strip the unicode tags from u'XXX'
 
-            if global_vars.color_opt != global_vars.COLOR_OPTS[0]:
+            if global_vars.coloring:
                 for rtc in req_tokens_by_type[t_type]:              # search in json tokens and color inside the pretty_print
                     if rtc.fcolor and rtc.tuple[1] in repr_line:
 
@@ -209,7 +209,7 @@ def print_xpanding_vert(req_tokens_by_type, t_type, columns, req_thres, resp_off
                            % (rtc.tuple[0], rtc.tuple[1], ("id=" + rtc.tuple[2]) if len(rtc.tuple) == 3 else '')
         else:
             colord_token = "%s=%s" % (rtc.tuple[0], rtc.tuple[1])
-        if global_vars.color_opt != global_vars.COLOR_OPTS[0]:
+        if global_vars.coloring:
             if rtc.fcolor:                                          # in try-match mode some tokens are not colored!
                 colord_token = termcolor.colored(colord_token, rtc.fcolor)
 

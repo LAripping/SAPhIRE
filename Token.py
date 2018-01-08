@@ -53,17 +53,6 @@ class Token:
         self.type = ttype
         self.time = ttime  # saphireTime
         self.fcolor = ''
-        if global_vars.color_opt == global_vars.COLOR_OPTS[1]:      # "by-type" : loop colors for same-typed tokens,
-            bc = Token.types.index(ttype) % len(Token.bg_colors)
-            self.bcolor = Token.bg_colors[bc]
-
-            if Token.fc == bc:
-                Token.fc = (Token.fc + 1) % len(Token.fg_colors)
-
-            self.fcolor = Token.fg_colors[Token.fc]
-            Token.fc = (Token.fc + 1) % len(Token.fg_colors)
-
-
 
 
 
@@ -76,10 +65,6 @@ class Token:
             'tuple': self.tuple,
         }
         print json.dumps(dictified, indent=4, sort_keys=True)
-
-
-
-
 
 
 
@@ -103,21 +88,7 @@ class Token:
 
         ##### Match Coloring
         if self.type != 'html' and self.tuple[1]:                   # Don't color 'html' <input fields or empty tokens
-            if global_vars.color_opt == global_vars.COLOR_OPTS[3]:
-                """ try-match-all : If found use same color, but all new tokens get colored"""
-                found = False
-
-                for t in array:
-                    if self.tuple[1] == t.tuple[1]:
-                        self.fcolor = t.fcolor
-                        found = True
-
-                if not found:
-                    self.fcolor = Token.fg_colors[Token.fc]
-                    Token.fc = (Token.fc + 1) % len(Token.fg_colors)
-
-            elif global_vars.color_opt == global_vars.COLOR_OPTS[2]:
-                """ try-match : If found use same color, but color only the tokens seen at least before """
+            if global_vars.coloring:
                 found = False
 
                 for t in array:
@@ -134,9 +105,6 @@ class Token:
                     self.fcolor = ''
 
         array.append(self)
-
-
-
 
 
 
@@ -164,7 +132,7 @@ class Token:
                 text = smart_decoder.base64decode(text)             # 0. Explicit rule > b64
                 transformation_chain += 'b64 '
                 did_transformation = True
-                if global_vars.color_opt != global_vars.COLOR_OPTS[0]:
+                if global_vars.coloring:
                     text = termcolor.colored(text, attrs=['underline'])
 
             if smart_decoder.is_urlencoded(text) == 1:              # 1. URL encoding
@@ -176,14 +144,14 @@ class Token:
                 text = smart_decoder.base64decode(text)
                 transformation_chain += 'b64 '
                 did_transformation = True
-                if global_vars.color_opt != global_vars.COLOR_OPTS[0]:
+                if global_vars.coloring:
                     text = termcolor.colored(text, attrs=['underline'])
 
             if smart_decoder.is_timestamp(text):                    # 3. Timestamp
                 text = utils.timestamp_to_hartime(text)
                 transformation_chain += 'timestamp '
                 did_transformation = False                          # decode no further
-                if global_vars.color_opt != global_vars.COLOR_OPTS[0]:
+                if global_vars.coloring:
                     text = termcolor.colored(text, attrs=['underline'])
 
             if smart_decoder.is_jwt(text):                          # 4. JSON Web Token
@@ -209,7 +177,7 @@ class Token:
 
                 transformation_chain += 'jwt '
                 did_transformation = True
-                if global_vars.color_opt != global_vars.COLOR_OPTS[0]:
+                if global_vars.coloring:
                     text = termcolor.colored(text, attrs=['underline'])
 
             if did_transformation == False:

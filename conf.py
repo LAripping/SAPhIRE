@@ -63,6 +63,7 @@ ignore_tokens_with_keys = [
 ##### ONLY COLOR
 # color nothing but the tokens having a key/value in the ones below.
 # If both dicts are empty, normal coloring occurs
+# Applicable only in color modes othen than 0 = 'off'
 only_color_tokens = [
 
 ]

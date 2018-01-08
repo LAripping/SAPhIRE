@@ -78,19 +78,7 @@ Go ahead and visit a production site you always wanted to script! First manually
 
 
 ### Options
-`-c, --color` Determines the way the tokens will be colored (meaningful only in flow_print mode) Possible Values:
-
-
-0. ` off` no funky colors and stuff
-
-1. `by-type` rather dumb, fuzz around the colors for each type, no affiliation
-
-2. `try-match` *the suggested and default mode*, Color every token that occurs more than once, all-occurrences with the same color!
-
-3. `try-match-all` can't live without colors? Color every token and same ones get the same color.
-
-
-
+`-c, --nocolor` No fancy colors and stuff, meaningful only in flow_print mode
 
 `-s, --nosmart` don't attempt any smart decoding. Useful in (rare) cases it messes up
 

@@ -9,9 +9,7 @@ harfile_pagetime = ''
 debug = False
 interact = False
 smart_decoding = True
-
-COLOR_OPTS=['off','by-type','try-match','try-match-all']
-color_opt = COLOR_OPTS[2]
+coloring = True
 
 (XPAND_HORZ, XPAND_VERT)= ('h','v')
 xpand = XPAND_VERT

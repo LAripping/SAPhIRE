@@ -310,19 +310,18 @@ if __name__ == "__main__":                                          # TODO split
     parser = argparse.ArgumentParser(description="...a Smart API Reverse Enginneering Helper", epilog="See README for more on the options provided here")
     parser.add_argument("harfile", help="the recorded .har flow to analyze")
     parser.add_argument("-d", "--debug", help="fine-tune settings and get more verbose output", action="store_true")
-    parser.add_argument("-c", "--color", type=int, choices=[0, 1, 2, 3],
-                        help="color setting: 0=Off, 1=by-type, 2=try-match, 3=try-match-all.")
-    parser.add_argument("-x","--expand", choices=['h','v'],
-                        help="dimension to expand the list of tokens per-category: h=Horizontally, v=Vertically. See README for more")
+    parser.add_argument("-c", "--nocolor", help="turnoff color outout", action="store_true")
     parser.add_argument("-s", "--nosmart", help="turnoff smart decoding", action="store_true")
     parser.add_argument("-i", "--interactive", help="don't flood the terminal, print each req/resp pairs on user's prompt", action="store_true")
+    parser.add_argument("-x", "--expand", choices=['h', 'v'],
+                        help="dimension to expand the list of tokens per-category: h=Horizontally, v=Vertically. See README for more")
 
 
     args = parser.parse_args()
     if args.debug:
         global_vars.debug = True
-    if args.color != None :
-        global_vars.color_opt = global_vars.COLOR_OPTS[args.color]
+    if args.nocolor:
+        global_vars.coloring = False
     if args.expand:
         global_vars.xpand = args.expand
     if args.nosmart:
