@@ -13,7 +13,7 @@ import conf
 import utils
 import global_vars
 from flow_print_impl import *
-from Token import Token
+from Token import Token, IgnoredTokenException
 
 
 
@@ -91,6 +91,8 @@ def recognize_tokens():
                 t = Token('url', e['saphireTime'], (p['name'], p['value']))
                 t.match_and_insert(global_vars.tokens)
                 recognized += 1
+        except IgnoredTokenException:
+            pass
         except KeyError:
             pass
 
@@ -107,6 +109,8 @@ def recognize_tokens():
                     t = Token('cookie', e['saphireTime'], (c.split('=')[0] , c.split('=')[1]))
                     t.match_and_insert(global_vars.tokens)
                     recognized += 1
+        except IgnoredTokenException:
+            pass
         except KeyError:
             pass
         except IndexError:
@@ -138,6 +142,8 @@ def recognize_tokens():
                         e['request']['saphireJson'] = post_json  # add the full dict, might need later...
                         count = utils.tokenize_json(post_json, 'json', e['saphireTime'])
                         recognized += count
+        except IgnoredTokenException:
+            pass
         except KeyError:
             pass
 
@@ -151,6 +157,8 @@ def recognize_tokens():
                 t = Token('req_header', e['saphireTime'], (h['name'], h['value']))
                 t.match_and_insert(global_vars.tokens)
                 recognized += 1
+        except IgnoredTokenException:
+            pass
         except KeyError:
             pass
 
@@ -169,6 +177,8 @@ def recognize_tokens():
                 t = Token('rsp_header', e['saphireTime'], ('location', location))
                 t.match_and_insert(global_vars.tokens)
                 recognized += 1
+        except IgnoredTokenException:
+            pass
         except KeyError:
             pass
         except IndexError:
@@ -205,6 +215,8 @@ def recognize_tokens():
                     t = Token('set_cookie', e['saphireTime'], (c.split('=')[0] , c.split('=')[1].split('; ')[0]))
                     t.match_and_insert(global_vars.tokens)
                     recognized += 1
+        except IgnoredTokenException:
+            pass
         except KeyError:
             pass
         except IndexError:
@@ -228,6 +240,8 @@ def recognize_tokens():
                     t = Token('html', e['saphireTime'], tuple)
                     t.match_and_insert(global_vars.tokens)
                     recognized += 1
+        except IgnoredTokenException:
+            pass
         except KeyError:
             pass
 

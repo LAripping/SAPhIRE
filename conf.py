@@ -40,7 +40,7 @@ keys_of_b64_tokens = [
     # 'PHPSESSID',
 ]
 
-################ Following conf options not yet suported. Sorry :P
+
 
 ##### IGNORE TOKENS
 # don't bother smart-decoding / parsing / matching / coloring tokens
@@ -48,16 +48,17 @@ keys_of_b64_tokens = [
 ignore_tokens = [
     'utf-8',
     '✓',
-    'en-US',
+    'en_US',
 ]
 
 ignore_tokens_with_keys = [
     'encoding',
     'locale',
     'lang',
+    'timezone',
 ]
 
-
+################ Following conf options not yet suported. Sorry :P
 
 ##### ONLY COLOR
 # color nothing but the tokens having a key/value in the ones below.

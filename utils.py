@@ -4,7 +4,7 @@ import json
 import urlparse
 
 import global_vars
-import Token
+from Token import Token, IgnoredTokenException
 
 
 def filter_by(fdomain):
@@ -43,9 +43,13 @@ def tokenize_json(json_dict, token_type, token_time):
     for el in all_strings:
         if isinstance(el, bool):
             continue                                                # ignore True/False
-        t = Token.Token(token_type, token_time, ('', unicode(el)))
-        t.match_and_insert(global_vars.tokens)
-        recognized += 1
+        try:
+            t = Token(token_type, token_time, ('', unicode(el)))
+            t.match_and_insert(global_vars.tokens)
+            recognized += 1
+        except IgnoredTokenException:
+            continue
+
     return recognized
 
 

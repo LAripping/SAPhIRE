@@ -25,7 +25,8 @@ class Token:
 
     def __init__(self, ttype, ttime, ttuple):
         """
-        Token() constructor
+        Token() constructor. Trows a custom Exception when token should be ignored
+
         :param ttype: A value from the types list in the attribute
         :param ttime: The saphireTime of the request that contains it (Foreign Key - like)
         :param ttuple: Could be one of:
@@ -34,6 +35,18 @@ class Token:
             - (type,name)       for some 'html' type of Tokens
             - ('', value)       for 'json' and some 'form' type Tokens
         """
+        if len(ttuple)==3:
+            if ttuple[2] in conf.ignore_tokens \
+            or ttuple[1] in conf.ignore_tokens_with_keys:
+                raise IgnoredTokenException
+        elif ttuple[0]=='':
+            if ttuple[1] in conf.ignore_tokens:
+                raise IgnoredTokenException
+        else:
+            if ttuple[0] in conf.ignore_tokens_with_keys \
+            or ttuple[1] in conf.ignore_tokens:
+                raise IgnoredTokenException
+
         self.tuple = ttuple
         if ttype not in Token.types:
             exit('Unsupported type \'' + ttype + '\'!')
@@ -210,3 +223,6 @@ class Token:
 
         return text
 
+
+class IgnoredTokenException(Exception):
+    pass
