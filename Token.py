@@ -37,14 +37,24 @@ class Token:
         """
         if len(ttuple)==3:                                          # code repetition - Issue #26
             if ttuple[1] in conf.ignore_tokens_with_keys:
+                if global_vars.debug:
+                    print termcolor.colored('[c] Ignoring \'%s\' as per conf'%ttuple[1] , color='magenta')
                 raise IgnoredTokenException
         elif ttuple[0]=='':
             if ttuple[1] in conf.ignore_tokens:
+                if global_vars.debug:
+                    print termcolor.colored('[c] Ignoring \'%s\' as per conf' % ttuple[1], color='magenta')
                 raise IgnoredTokenException
         else:
-            if ttuple[0] in conf.ignore_tokens_with_keys \
-            or ttuple[1] in conf.ignore_tokens:
+            if ttuple[0] in conf.ignore_tokens_with_keys:
+                if global_vars.debug:
+                    print termcolor.colored('[c] Ignoring \'%s\' as per conf' % ttuple[0], color='magenta')
                 raise IgnoredTokenException
+            if ttuple[1] in conf.ignore_tokens:
+                if global_vars.debug:
+                    print termcolor.colored('[c] Ignoring \'%s\' as per conf' % ttuple[1], color='magenta')
+                raise IgnoredTokenException
+
 
         self.tuple = ttuple
         if ttype not in Token.types:
@@ -78,6 +88,8 @@ class Token:
 
         ##### Smart decoding
         do_decode = self.tuple[0] not in conf.no_decode_keys and self.tuple[1] not in conf.no_decode
+        if global_vars.debug and not do_decode:
+            print termcolor.colored('[c] Found token inside no_decode*, skipping' ,color='magenta')
         decode_key   = self.tuple[0] and global_vars.smart_decoding and do_decode
         decode_value = self.tuple[1] and global_vars.smart_decoding and do_decode
         key   = self.smart_decode(self.tuple[0]) if decode_key   else self.tuple[0]
@@ -137,16 +149,22 @@ class Token:
         """
         orig_text = text
         transformation_chain = ''
+        explicit_rule = False
         for i in range(100):
             did_transformation = False
 
             if text in conf.b64_tokens                             \
             or self.tuple[0] in conf.keys_of_b64_tokens and text==self.tuple[1]:
-                text = smart_decoder.base64decode(text)             # 0. Explicit rule > b64
-                transformation_chain += 'b64 '
-                did_transformation = True
-                if global_vars.coloring:
-                    text = termcolor.colored(text, attrs=['underline'])
+                if 'yes' not in smart_decoder.is_b64encoded(text):  # ...user says bullshit. I won't crash!
+                    if global_vars.debug:
+                        print termcolor.colored('[c] Token is not base64, user is wrong! (I won\'t crash)', color='magenta')
+                else:
+                    text = smart_decoder.base64decode(text)         # 0. Explicit rule > b64
+                    transformation_chain += 'b64 '
+                    did_transformation = True
+                    explicit_rule = True
+                    if global_vars.coloring:
+                        text = termcolor.colored(text, attrs=['underline'])
 
             if smart_decoder.is_urlencoded(text) == 1:              # 1. URL encoding
                 text = smart_decoder.urldecode(text)
@@ -198,7 +216,11 @@ class Token:
 
         if global_vars.debug and transformation_chain:
             try:
-                print "[+] Applied transformations: %s. '%s' -> '%s'" % (transformation_chain, orig_text, text)
+                template = "[+] Applied transformations: %s. '%s' -> '%s'" % (transformation_chain, orig_text, text)
+                if explicit_rule:
+                    print termcolor.colored(template, color='magenta')
+                else:
+                    print template
             except UnicodeDecodeError:
                 pass
 

@@ -21,7 +21,7 @@ def flow_print():
 
     divider = 50
     if global_vars.debug:
-        ans = raw_input('Enter req/resp divid er pct. (ENTER -> default=50%): ')
+        ans = raw_input(termcolor.colored('Enter req/resp divid er pct. (ENTER -> default=50%): ', color='yellow'))
         if ans:
             divider = int(ans)
             print "Divider set to %d" % divider
@@ -34,7 +34,7 @@ def flow_print():
     max_len = 25                                                    # limit the length of tokens displayed, need to print as much as we can
     if global_vars.xpand == global_vars.XPAND_HORZ:                 # only used in XPAND_HORZ
         if global_vars.debug:                                       # for a short, cool demonstration. Not the full value of it! (do this later manually)
-            ans = raw_input('Enter maximum characters of tokens to be shown. (ENTER -> default=25)')
+            ans = raw_input(termcolor.colored('Enter maximum characters of tokens to be shown. (ENTER -> default=25)', color='yellow'))
             if ans:
                 max_len = int(ans)
                 print "Max len set to %d" % max_len

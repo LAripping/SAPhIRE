@@ -8,6 +8,7 @@ import string
 import re
 import argparse
 import bs4
+import termcolor
 
 import conf
 import utils
@@ -28,11 +29,12 @@ def isolate_requests(har_file):
         print "[+] Read %d entries" % len(global_vars.req_resp)
 
     if conf.domains == []:
-        fdomain = raw_input("Filter by domain? (ENTER for no): ")
+        fdomain = raw_input(termcolor.colored("Filter by domain? (ENTER for no): ", color='yellow'))
         if fdomain:
             utils.filter_by(fdomain)
     else:
-        print "[c] Read %d domains to filter on" % len(conf.domains)    # TODO search_all [c] when patching #25
+        if global_vars.debug:
+            print termcolor.colored("[c] Read %d domains to filter on" % len(conf.domains), color='magenta')
         for fdomain in conf.domains:
             utils.filter_by(fdomain)
 
@@ -42,7 +44,7 @@ def isolate_requests(har_file):
 
 
 
-    no_data = raw_input("Ignore media/fonts/css/... junk? (Y/n): ")
+    no_data = raw_input(termcolor.colored("Ignore media/fonts/css/... junk? (Y/n): ", color='yellow'))
     if no_data in ["", "y", "Y"]:
         junk_ext = [".ttf", ".woff", ".otf", ".eot",                # fonts
                     ".css", ".sass",                                # styles
@@ -73,7 +75,7 @@ def isolate_requests(har_file):
 
 def recognize_tokens():
     if global_vars.debug:
-        print "[+] %d Entries in for token recognition" % len(global_vars.req_resp)
+        print termcolor.colored("[+] %d Entries in for token recognition" % len(global_vars.req_resp), color='blue')
         
     global_vars.common_headers = []
     with open('common_headers.txt') as infile:
@@ -277,12 +279,12 @@ def recognize_tokens():
 
 
         if global_vars.debug:
-            print '[+] Recognized %d tokens in req with saphireTime %0.3f' % (recognized,e['saphireTime'])
+            print termcolor.colored('[+] Recognized %d tokens in req with saphireTime %0.3f' % (recognized,e['saphireTime']), color='green')
 
 
 
     if global_vars.debug:
-        ans = raw_input('Print 10 random tokens?(y/N): ')
+        ans = raw_input(termcolor.colored('Print 10 random tokens?(y/N): ', color='yellow'))
         if ans=='y':
             idx = 0
             for i in range(10):
@@ -331,6 +333,11 @@ if __name__ == "__main__":                                          # TODO split
 
     if conf.only_color_tokens_with_keys!=[] or conf.only_color_tokens!=[]:
         global_vars.conf_has_color_only = True
+        if global_vars.debug:
+            print termcolor.colored('[c] Read in %d tokens to only color'
+                                    % ( len(conf.only_color_tokens)+len(conf.only_color_tokens_with_keys) ),
+                                    color='magenta')
+
 
     isolate_requests( args.harfile )
     set_saphireTimes()                                              # make new field with unique timestamp

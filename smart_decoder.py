@@ -149,27 +149,27 @@ def is_b64encoded(text):
         return 'no'
 
     ##### Do the Tests
-    conf = 1.0
+    confidence = 1.0
     if has_valid_words(text):
-        conf += -0.3
+        confidence += -0.3
     if len(text) < 25 or len(text) % 2 == 1:
-        conf += -0.2
+        confidence += -0.2
     if len( [d for d in text if d in string.digits] ) > len( [l for l in text if l in string.letters] ):
-        conf += -0.2
+        confidence += -0.2
     if float( len( [d for d in text if d in list("=+-/_")] ) ) > 20.0/100.0 * float( len(text) ):
-        conf += -0.2
+        confidence += -0.2
     if ( text.isupper() or text.islower() ) and len( [c for c in text if c not in string.hexdigits+"=+-/_"] )==0:
         # effectively: not .ismixed()       and          all chars in hexdigits+symbols
-        conf += -0.2
+        confidence += -0.2
     if text[:-1]=='=':
-        conf += 0.2
+        confidence += 0.2
     if text[:-2]=='==':
-        conf += 0.2
+        confidence += 0.2
     # TODO another test:
     # count different symbols appearing (besides =)
 
     ##### Decide on results
-    if conf <= 0.5:
+    if confidence <= 0.5:
         return 'no'
     else:
         return 'yes'
