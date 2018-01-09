@@ -13,6 +13,7 @@ Access-Control-Request-Headers
 Access-Control-Request-Method
 Age
 Allow
+Alt-Svc
 # Authorization
 Cache-Control
 Connection
