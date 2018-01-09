@@ -76,7 +76,10 @@ def flow_print():
 
         ##### Response
         fit_print('_' * 500, resp_offset, columns - 2, True)
-        line = "%4d %s" % (e['response']['status'], e['response']['statusText'])
+        if e['response']['status'] == 0:
+            e['response']['status'] = ''
+            e['response']['statusText'] = 'CANCELED'
+        line = "%4s %s" % ( str(e['response']['status']), e['response']['statusText'])
         fit_print(line, resp_offset, columns - 2)
         fit_print('-' * 500, resp_offset, columns - 2)
 
