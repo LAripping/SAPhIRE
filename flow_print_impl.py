@@ -129,7 +129,7 @@ def print_xpanding_horz(req_tokens_by_type, t_type, max_len, columns, req_thres,
         else:
             colord_token = "%s=%s" % (key, value)
         if global_vars.coloring:
-            if rtc.fcolor:                                          # in try-match mode some tokens are not colored!
+            if rtc.fcolor:                                          # even in coloring mode, some tokens are not colored!
                 colord_token = termcolor.colored(colord_token, rtc.fcolor)
 
         line += "%s%s" % (colord_token, ' ' if j < array_len - 1 else '')

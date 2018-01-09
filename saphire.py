@@ -329,6 +329,9 @@ if __name__ == "__main__":                                          # TODO split
     if args.interactive:
         global_vars.interact = True
 
+    if conf.only_color_tokens_with_keys!=[] or conf.only_color_tokens!=[]:
+        global_vars.conf_has_color_only = True
+
     isolate_requests( args.harfile )
     set_saphireTimes()                                              # make new field with unique timestamp
     global_vars.req_resp = utils.sort_list_of_dicts_by_key(global_vars.req_resp,'saphireTime')

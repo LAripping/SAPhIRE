@@ -58,12 +58,11 @@ ignore_tokens_with_keys = [
     'timezone',
 ]
 
-################ Following conf options not yet suported. Sorry :P
 
 ##### ONLY COLOR
 # color nothing but the tokens having a key/value in the ones below.
 # If both dicts are empty, normal coloring occurs
-# Applicable only in color modes othen than 0 = 'off'
+# Applicable only when coloring is enabled (no --nocolor flag)
 only_color_tokens = [
 
 ]

@@ -11,6 +11,8 @@ interact = False
 smart_decoding = True
 coloring = True
 
+conf_has_color_only = False
+
 (XPAND_HORZ, XPAND_VERT)= ('h','v')
 xpand = XPAND_VERT
 

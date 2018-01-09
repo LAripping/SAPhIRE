@@ -30,14 +30,13 @@ class Token:
         :param ttype: A value from the types list in the attribute
         :param ttime: The saphireTime of the request that contains it (Foreign Key - like)
         :param ttuple: Could be one of:
-            - (key,value)
             - (type,name,id)    for some 'html' type of Tokens
-            - (type,name)       for some 'html' type of Tokens
+            - (type,name)       for the rest of  'html' type of Tokens
             - ('', value)       for 'json' and some 'form' type Tokens
+            - (key,value)       else, for most tokens
         """
-        if len(ttuple)==3:
-            if ttuple[2] in conf.ignore_tokens \
-            or ttuple[1] in conf.ignore_tokens_with_keys:
+        if len(ttuple)==3:                                          # code repetition - Issue #26
+            if ttuple[1] in conf.ignore_tokens_with_keys:
                 raise IgnoredTokenException
         elif ttuple[0]=='':
             if ttuple[1] in conf.ignore_tokens:
@@ -89,20 +88,34 @@ class Token:
         ##### Match Coloring
         if self.type != 'html' and self.tuple[1]:                   # Don't color 'html' <input fields or empty tokens
             if global_vars.coloring:
-                found = False
 
-                for t in array:
-                    if self.tuple[1] == t.tuple[1]:
-                        found = True
-                        if t.fcolor:
-                            self.fcolor = t.fcolor
-                        else:
-                            self.fcolor = Token.fg_colors[Token.fc] # new color for both New...
-                            t.fcolor = self.fcolor                  # ...and Old
-                            Token.fc = (Token.fc + 1) % len(Token.fg_colors)
-
-                if not found:
-                    self.fcolor = ''
+                if global_vars.conf_has_color_only:                 # If conf explicitly states which to color, find it inside
+                    proceed = False
+                    if len(self.tuple) == 3:                            # code repetition - Issue #26
+                        if self.tuple[1] in conf.only_color_tokens_with_keys:
+                            proceed = True
+                    elif self.tuple[0] == '':
+                        if self.tuple[1] in conf.only_color_tokens:
+                            proceed = True
+                    else:
+                        if self.tuple[0] in conf.only_color_tokens_with_keys \
+                        or self.tuple[1] in conf.only_color_tokens:
+                            proceed = True
+                                                                    # It doesnt? -> Go on! | It does? ->  Found?
+                if (not global_vars.conf_has_color_only) or proceed:
+                    same = False
+                    for t in array:
+                        if self.tuple[1] == t.tuple[1]:
+                            same = True
+                            if t.fcolor:
+                                self.fcolor = t.fcolor
+                            else:                                   # new color for both New...
+                                self.fcolor = Token.fg_colors[Token.fc]
+                                t.fcolor = self.fcolor
+                                Token.fc = (Token.fc + 1) % len(Token.fg_colors)
+                                                                    # ...and Old
+                    if not same:
+                        self.fcolor = ''
 
         array.append(self)
 
