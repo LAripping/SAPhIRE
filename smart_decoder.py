@@ -119,9 +119,10 @@ def is_b64encoded(text):
     A string is inferred as base64 encoded if it:
 
     - has valid words
-    - Short- or odd-length'ed strings
-    - Strings with more digits than letters
-    - Strings with not-low frequency of symbols
+    - is Short- or odd-length'ed
+    - has more digits than letters
+    - doesn't have letters ONLY
+    - has not-low frequency of symbols
     (biggest index => require most aces in bytes => most rare in plaintext)
     - Only hex chars (chars same case and less than f)
 
@@ -155,6 +156,8 @@ def is_b64encoded(text):
     if len(text) < 25 or len(text) % 2 == 1:
         confidence += -0.2
     if len( [d for d in text if d in string.digits] ) > len( [l for l in text if l in string.letters] ):
+        confidence += -0.2
+    if len( [d for d in text if d in string.digits] ) == 0 and len(text)>10:
         confidence += -0.2
     if float( len( [d for d in text if d in list("=+-/_")] ) ) > 20.0/100.0 * float( len(text) ):
         confidence += -0.2
