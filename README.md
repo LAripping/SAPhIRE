@@ -23,6 +23,20 @@ It Isolates "tokens" like
 
 
 
+
+
+## Screenshots
+
+| ![feat-form-Unicode](screenshots/feat-form-Unicode.JPG) |  ![feat-jwt](screenshots/feat-jwt.JPG)   |
+| :--------------------------------------: | :--------------------------------------: |
+| ![feat-json-both](screenshots/feat-json-both.JPG) | ![feat-timestamps](screenshots/feat-timestamps.JPG) |
+
+
+
+
+
+
+
 ## Selling Points
 
 - [x] **Auto-decodes tokens** when type is recognized, to spare the reverser of the easy but tiring chore to manually do it on every occurrence. Types supported by *Smart Decoder*:
